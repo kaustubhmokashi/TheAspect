@@ -1,6 +1,4 @@
 const STORAGE_KEY = "the-aspect-editorial-state-v3";
-const HARDCODED_GEMINI_API_KEY = "AIzaSyCAUTTcVUFULVf4bs2CBRw_J--YvLKibWo";
-const GEMINI_MODEL = "gemini-2.5-flash";
 const WORLD_CITIES_URL = "https://cdn.jsdelivr.net/npm/world-cities-json@1.0.1/data/cities.json";
 const ORACLE_COOLDOWN_MS = 25000;
 
@@ -394,7 +392,7 @@ function syncOracleCooldown() {
     elements.oracleSubmitButton.disabled = true;
     elements.oracleSubmitButton.textContent = "Cooling down";
     elements.oracleCooldownStatus.dataset.state = "cooldown";
-    elements.oracleCooldownStatus.textContent = `Oracle cooling down to stay within Gemini free-tier limits. Try again in ${remainingSeconds}s.`;
+    elements.oracleCooldownStatus.textContent = `Oracle cooling down to stay within free-tier limits. Try again in ${remainingSeconds}s.`;
     return;
   }
 
@@ -409,7 +407,6 @@ function setupEvents() {
   elements.profileForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const apiKey = HARDCODED_GEMINI_API_KEY;
     if (!isBirthdateValid(elements.inputBirthdate.value.trim())) {
       setGenerationStatus("Enter birthday in dd/mm/yyyy format.", "error");
       return;
@@ -443,10 +440,10 @@ function setupEvents() {
 
     generationUnlocked = false;
     setGenerating(true);
-    setGenerationStatus("Generating chart, forecast, life path, oracle opening, and sanctuary with Gemini...", "idle");
+    setGenerationStatus("Generating chart, forecast, life path, oracle opening, and sanctuary...", "idle");
 
     try {
-      state.generatedIssue = await generateIssueWithGemini(profile, apiKey);
+      state.generatedIssue = await generateIssueWithAI(profile);
       state.oracleHistory = [];
       state.journalEntries = [];
       generationUnlocked = true;
@@ -454,9 +451,9 @@ function setupEvents() {
       syncGenerationGate();
       saveState();
       renderApp();
-      setGenerationStatus("Issue generated successfully with Gemini.", "success");
+      setGenerationStatus("Issue generated successfully.", "success");
     } catch (error) {
-      setGenerationStatus(`Gemini generation failed: ${error.message}`, "error");
+      setGenerationStatus(`Generation failed: ${error.message}`, "error");
     } finally {
       syncGenerationGate();
       setGenerating(false);
@@ -520,9 +517,8 @@ function setupEvents() {
   elements.oracleForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const apiKey = HARDCODED_GEMINI_API_KEY;
     const question = elements.oracleInput.value.trim();
-    if (!question || !apiKey) {
+    if (!question) {
       return;
     }
 
@@ -539,11 +535,11 @@ function setupEvents() {
 
     oracleInFlight = true;
     syncOracleCooldown();
-    setGenerationStatus("Consulting Gemini for an oracle response...", "idle");
+    setGenerationStatus("Consulting the oracle...", "idle");
 
     try {
       const profile = buildProfile(state);
-      const answer = await generateOracleAnswerWithGemini(profile, question, apiKey, state.generatedIssue);
+      const answer = await generateOracleAnswerWithAI(profile, question, state.generatedIssue);
       state.oracleHistory.unshift({ question, answer });
       state.oracleHistory = state.oracleHistory.slice(0, 6);
       elements.oracleInput.value = "";
@@ -662,9 +658,9 @@ function renderChart(profile) {
   elements.sunCopy.textContent = sunMeta.sun;
   elements.moonCopy.textContent = moonMeta.moon;
   elements.risingCopy.textContent = risingMeta.rising;
-  elements.chartLede.textContent = chart?.lede || "Generate the issue to fill this section with Gemini-authored natal analysis.";
+  elements.chartLede.textContent = chart?.lede || "Generate the issue to fill this section with AI-authored natal analysis.";
   elements.chartAnalysis.innerHTML = (chart?.paragraphs || [
-    "Your Sun, Moon, and Rising are calculated locally, but the long-form editorial reading is waiting for Gemini generation.",
+    "Your Sun, Moon, and Rising are calculated locally, but the long-form editorial reading is waiting for generation.",
     "Use The Genesis and hit Generate my issue to populate this spread with chart-specific narrative instead of placeholder copy.",
   ]).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("");
 }
@@ -676,7 +672,7 @@ function renderForecast(profile) {
 
   elements.forecastLede.textContent = visibleIssue
     ? `Current transit material is generated from ${profile.name}'s ${profile.sun}-${profile.moon}-${profile.rising} axis and ${profile.city}'s submitted coordinates.`
-    : "Daily, weekly, and yearly spreads will appear here after Gemini generates the issue.";
+    : "Daily, weekly, and yearly spreads will appear here after the issue is generated.";
   elements.forecastRangeLabel.textContent = range.label;
   elements.forecastHeadline.textContent = active?.headline || "Awaiting generated forecast";
   elements.forecastBody.textContent = active?.body || "Provide profile data and click Generate my issue to create this editorial forecast.";
@@ -700,7 +696,7 @@ function renderLifePath(profile) {
   const life = getVisibleIssue()?.life;
   const cards = life?.cards || [];
 
-  elements.lifeLede.textContent = life?.lede || "Gemini will populate profession, family, and romance assessments from your submitted profile.";
+  elements.lifeLede.textContent = life?.lede || "AI will populate profession, family, and romance assessments from your submitted profile.";
   elements.lifeGrid.innerHTML = cards
     .map(
       (card) => `
@@ -716,7 +712,7 @@ function renderLifePath(profile) {
       <article class="life-card">
         <p class="life-card__eyebrow">Module 01</p>
         <h3>Life Path Pending</h3>
-        <p>Run Gemini generation from The Genesis to replace this placeholder with editorial assessments.</p>
+        <p>Run generation from The Genesis to replace this placeholder with editorial assessments.</p>
       </article>
     `;
 }
@@ -731,7 +727,7 @@ function renderOracle() {
       : [
         {
           question: `What does ${profile.name}'s issue begin with?`,
-          answer: "Generate the issue with Gemini, then ask a question here for a custom oracle response.",
+          answer: "Generate the issue first, then ask a question here for a custom oracle response.",
         },
       ];
 
@@ -822,370 +818,31 @@ function getVisibleIssue() {
   return generationUnlocked ? state.generatedIssue : null;
 }
 
-async function generateIssueWithGemini(profile, apiKey) {
-  return askGeminiJSON(apiKey, buildIssuePrompt(profile), issueSchema, 3200);
+async function generateIssueWithAI(profile) {
+  return postJson("/api/generate-issue", { profile });
 }
 
-async function generateOracleAnswerWithGemini(profile, question, apiKey, generatedIssue) {
-  const response = await askGeminiJSON(
-    apiKey,
-    buildOraclePrompt(profile, question, generatedIssue),
-    oracleAnswerSchema,
-    700
-  );
-
+async function generateOracleAnswerWithAI(profile, question, generatedIssue) {
+  const response = await postJson("/api/oracle", { profile, question, generatedIssue });
   return response.answer;
 }
 
-async function askGeminiJSON(apiKey, prompt, schema, maxOutputTokens) {
-  let lastError = null;
+async function postJson(url, body) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
-      },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: attempt === 0
-              ? prompt
-              : `${prompt}\n\nReturn only a raw JSON object. Do not use markdown fences. Do not add any explanatory text before or after the JSON.`,
-          }],
-        }],
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseJsonSchema: schema,
-          temperature: 0.25,
-          topP: 0.8,
-          maxOutputTokens,
-        },
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(formatGeminiApiError(errorText, response.status));
-    }
-
-    const payload = await response.json();
-    const text = extractGeminiText(payload);
-
-    try {
-      return parseGeminiJson(text);
-    } catch (error) {
-      lastError = error;
-    }
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error || `Request failed with status ${response.status}`);
   }
 
-  throw new Error(`Gemini returned invalid JSON for a structured section. ${lastError ? `Last parse error: ${lastError.message}` : ""}`.trim());
+  return payload.data;
 }
-
-function parseGeminiJson(text) {
-  const cleaned = stripCodeFences(text);
-
-  try {
-    return JSON.parse(cleaned);
-  } catch (_error) {
-    const extracted = extractJSONObject(cleaned);
-    if (extracted) {
-      return JSON.parse(extracted);
-    }
-  }
-
-  throw new Error("Unable to parse the model response as JSON.");
-}
-
-function extractGeminiText(payload) {
-  const parts = payload?.candidates?.[0]?.content?.parts;
-  const text = Array.isArray(parts)
-    ? parts.map((part) => part.text || "").join("").trim()
-    : "";
-
-  if (!text) {
-    throw new Error("Gemini returned an empty response.");
-  }
-
-  return text;
-}
-
-function stripCodeFences(text) {
-  return text.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/, "").trim();
-}
-
-function extractJSONObject(text) {
-  const startCandidates = [text.indexOf("{"), text.indexOf("[")].filter((index) => index >= 0);
-  if (!startCandidates.length) {
-    return null;
-  }
-
-  const start = Math.min(...startCandidates);
-  const opening = text[start];
-  const closing = opening === "{" ? "}" : "]";
-  let depth = 0;
-  let inString = false;
-  let escaped = false;
-
-  for (let index = start; index < text.length; index += 1) {
-    const char = text[index];
-
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-
-    if (char === "\\") {
-      escaped = true;
-      continue;
-    }
-
-    if (char === "\"") {
-      inString = !inString;
-      continue;
-    }
-
-    if (inString) {
-      continue;
-    }
-
-    if (char === opening) {
-      depth += 1;
-    } else if (char === closing) {
-      depth -= 1;
-      if (depth === 0) {
-        return text.slice(start, index + 1);
-      }
-    }
-  }
-
-  return null;
-}
-
-function promptContext(profile) {
-  return [
-    "You are writing for The Aspect, a high-end editorial astrology product.",
-    "Tone: high-contrast editorial chic, psychologically sharp, elegant, not mystical fluff.",
-    "Format rules: no markdown, no bullet markers inside prose fields, no emojis, no disclaimers.",
-    `Name: ${profile.name}`,
-    `Birthdate: ${profile.formattedDate}`,
-    `Birth time: ${profile.birthtime}`,
-    `Birth city: ${profile.city}`,
-    `Sun sign: ${profile.sun}`,
-    `Moon sign: ${profile.moon}`,
-    `Rising sign: ${profile.rising}`,
-    `Dominant element: ${profile.element}`,
-    `Modality: ${profile.modality}`,
-  ].join("\n");
-}
-
-function buildChartPrompt(profile) {
-  return `${promptContext(profile)}
-
-Generate the Chart section only.
-Return JSON matching the schema.
-Write one lede and exactly three paragraphs.
-Each paragraph should feel bespoke to this person and reference the Sun, Moon, Rising, time, and city where helpful.
-Keep the writing refined, psychologically direct, and visually editorial.
-Do not mention being an AI or a model.`;
-}
-
-function buildIssuePrompt(profile) {
-  return `${promptContext(profile)}
-
-Generate the entire issue in one response.
-Return JSON matching the schema exactly.
-
-Requirements:
-- chart: one lede and exactly three paragraphs
-- forecast: daily, weekly, yearly; each needs a headline, one body paragraph, and exactly three directives
-- life: one lede and exactly three cards titled Profession, Family, and Romance
-- sanctuary: one short transit theme phrase and exactly two starter journal entries
-- oracleWelcome: one question and one answer
-
-Writing direction:
-- high-end editorial astrology
-- psychologically precise, elegant, serious
-- no mystical cliches, no filler, no disclaimers
-- bespoke to this profile and internally consistent across all sections
-- do not mention being an AI or model`;
-}
-
-function buildForecastPrompt(profile) {
-  return `${promptContext(profile)}
-
-Generate the Forecast section only.
-Return JSON with daily, weekly, and yearly objects.
-Each object must contain a headline, a body paragraph, and exactly three directive strings.
-Make each timeframe distinct rather than repetitive.
-The directives should feel actionable, elegant, and personal.`;
-}
-
-function buildLifePathPrompt(profile) {
-  return `${promptContext(profile)}
-
-Generate the Life Path section only.
-Return JSON with:
-- a lede
-- exactly three cards titled Profession, Family, and Romance
-Each card needs an eyebrow, one body paragraph, and exactly three short insight lines.
-Write with authority and specificity.`;
-}
-
-function buildSanctuaryPrompt(profile) {
-  return `${promptContext(profile)}
-
-Generate the Sanctuary section only.
-Return JSON with:
-- a short transit theme phrase
-- exactly two starter journal entries
-Each starter should have a date label and a reflective body paragraph that sounds private and literary.`;
-}
-
-function buildOracleWelcomePrompt(profile) {
-  return `${promptContext(profile)}
-
-Generate the opening Oracle card.
-Return JSON with a question and answer.
-The question should read like the first natural question this person would ask.
-The answer should be two to three sentences and feel penetrating, calm, and editorial.`;
-}
-
-function buildOraclePrompt(profile, question, generatedIssue) {
-  const forecastHeadline = generatedIssue?.forecast?.daily?.headline || "No forecast generated yet";
-  const lifeProfession = generatedIssue?.life?.cards?.[0]?.body || "No life path generated yet";
-
-  return `${promptContext(profile)}
-
-User question: ${question}
-Current daily forecast headline: ${forecastHeadline}
-Current profession note: ${lifeProfession}
-
-Generate the Oracle answer only.
-Return JSON with one field: answer.
-Answer in 3 to 5 sentences.
-Be specific to this profile and this question.`;
-}
-
-const chartSchema = {
-  type: "object",
-  properties: {
-    lede: { type: "string" },
-    paragraphs: {
-      type: "array",
-      minItems: 3,
-      maxItems: 3,
-      items: { type: "string" },
-    },
-  },
-  required: ["lede", "paragraphs"],
-};
-
-const forecastDetailSchema = {
-  type: "object",
-  properties: {
-    headline: { type: "string" },
-    body: { type: "string" },
-    directives: {
-      type: "array",
-      minItems: 3,
-      maxItems: 3,
-      items: { type: "string" },
-    },
-  },
-  required: ["headline", "body", "directives"],
-};
-
-const forecastSchema = {
-  type: "object",
-  properties: {
-    daily: forecastDetailSchema,
-    weekly: forecastDetailSchema,
-    yearly: forecastDetailSchema,
-  },
-  required: ["daily", "weekly", "yearly"],
-};
-
-const lifeCardSchema = {
-  type: "object",
-  properties: {
-    title: { type: "string" },
-    eyebrow: { type: "string" },
-    body: { type: "string" },
-    list: {
-      type: "array",
-      minItems: 3,
-      maxItems: 3,
-      items: { type: "string" },
-    },
-  },
-  required: ["title", "eyebrow", "body", "list"],
-};
-
-const lifeSchema = {
-  type: "object",
-  properties: {
-    lede: { type: "string" },
-    cards: {
-      type: "array",
-      minItems: 3,
-      maxItems: 3,
-      items: lifeCardSchema,
-    },
-  },
-  required: ["lede", "cards"],
-};
-
-const sanctuarySchema = {
-  type: "object",
-  properties: {
-    theme: { type: "string" },
-    starters: {
-      type: "array",
-      minItems: 2,
-      maxItems: 2,
-      items: {
-        type: "object",
-        properties: {
-          dateLabel: { type: "string" },
-          body: { type: "string" },
-        },
-        required: ["dateLabel", "body"],
-      },
-    },
-  },
-  required: ["theme", "starters"],
-};
-
-const oracleWelcomeSchema = {
-  type: "object",
-  properties: {
-    question: { type: "string" },
-    answer: { type: "string" },
-  },
-  required: ["question", "answer"],
-};
-
-const oracleAnswerSchema = {
-  type: "object",
-  properties: {
-    answer: { type: "string" },
-  },
-  required: ["answer"],
-};
-
-const issueSchema = {
-  type: "object",
-  properties: {
-    chart: chartSchema,
-    forecast: forecastSchema,
-    life: lifeSchema,
-    sanctuary: sanctuarySchema,
-    oracleWelcome: oracleWelcomeSchema,
-  },
-  required: ["chart", "forecast", "life", "sanctuary", "oracleWelcome"],
-};
 
 function buildOracleAnswer(question, profile) {
   const prompt = question.toLowerCase();
@@ -1493,41 +1150,6 @@ function escapeHtml(value) {
   const div = document.createElement("div");
   div.textContent = value;
   return div.innerHTML;
-}
-
-function formatGeminiApiError(errorText, statusCode) {
-  try {
-    const parsed = JSON.parse(errorText);
-    const apiError = parsed?.error;
-    if (!apiError) {
-      return errorText || `HTTP ${statusCode}`;
-    }
-
-    if (apiError.status === "RESOURCE_EXHAUSTED" || statusCode === 429) {
-      const retryDelay = extractRetryDelay(apiError);
-      return retryDelay
-        ? `Gemini rate limit reached. Please wait about ${retryDelay} and try again.`
-        : "Gemini rate limit reached. Please wait a short while and try again.";
-    }
-
-    return apiError.message || errorText || `HTTP ${statusCode}`;
-  } catch (_error) {
-    return errorText || `HTTP ${statusCode}`;
-  }
-}
-
-function extractRetryDelay(apiError) {
-  const retryInfo = apiError?.details?.find((detail) => detail?.["@type"]?.includes("RetryInfo"));
-  if (retryInfo?.retryDelay) {
-    return retryInfo.retryDelay.replace(/s$/, " seconds");
-  }
-
-  const match = apiError?.message?.match(/retry in\s+([0-9.]+)s/i);
-  if (match) {
-    return `${Math.ceil(Number(match[1]))} seconds`;
-  }
-
-  return null;
 }
 
 function getRetryDelayMs(message) {

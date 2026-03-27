@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: the-aspect
+    runtime: node
+    plan: free
+    buildCommand: ""
+    startCommand: node server.js
+    envVars:
+      - key: OPENROUTER_MODEL
+        value: stepfun/step-3.5-flash:free

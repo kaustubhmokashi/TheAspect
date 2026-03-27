@@ -1220,20 +1220,47 @@ async function generateOracleAnswerWithAI(profile, question, generatedIssue) {
 }
 
 async function postJson(url, body) {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  const retryableStatuses = new Set([502, 503, 504]);
+  const retryDelays = [0, 2000, 4500];
+  let lastError = null;
 
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(payload.error || `Request failed with status ${response.status}`);
+  for (let attempt = 0; attempt < retryDelays.length; attempt += 1) {
+    if (retryDelays[attempt] > 0) {
+      await sleep(retryDelays[attempt]);
+    }
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    const rawText = await response.text();
+    const payload = safeParseJson(rawText);
+
+    if (response.ok) {
+      return payload?.data;
+    }
+
+    const message = payload?.error || rawText.trim() || `Request failed with status ${response.status}`;
+    lastError = new Error(message);
+
+    if (!retryableStatuses.has(response.status)) {
+      throw lastError;
+    }
   }
 
-  return payload.data;
+  throw lastError || new Error("Request failed after multiple attempts.");
+}
+
+function safeParseJson(value) {
+  try {
+    return value ? JSON.parse(value) : null;
+  } catch (_error) {
+    return null;
+  }
 }
 
 function getSunSign(dateString) {

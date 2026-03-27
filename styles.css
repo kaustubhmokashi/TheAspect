@@ -428,6 +428,18 @@ body.is-locked [data-gated-nav] {
   color: var(--color-muted);
 }
 
+.generation-console__trace {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  color: var(--color-muted);
+  text-decoration: underline;
+  text-underline-offset: 0.18rem;
+  word-break: break-word;
+}
+
 .generation-console[data-state="loading"] .generation-console__pulse {
   color: var(--color-primary);
   animation: pulseText 1.8s ease-in-out infinite;

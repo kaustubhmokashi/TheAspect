@@ -278,6 +278,10 @@ const elements = {
   chartCoordinates: document.getElementById("chart-coordinates"),
   dominantElement: document.getElementById("dominant-element"),
   dominantModality: document.getElementById("dominant-modality"),
+  kundliHouses: document.getElementById("kundli-houses"),
+  kundliPath: document.getElementById("kundli-path"),
+  kundliPoints: document.getElementById("kundli-points"),
+  kundliAnnotations: document.getElementById("kundli-annotations"),
   sunSign: document.getElementById("sun-sign"),
   moonSign: document.getElementById("moon-sign"),
   risingSign: document.getElementById("rising-sign"),
@@ -789,11 +793,110 @@ function renderChart(profile) {
   elements.sunCopy.textContent = sunMeta.sun;
   elements.moonCopy.textContent = moonMeta.moon;
   elements.risingCopy.textContent = risingMeta.rising;
+  renderKundliVisual(profile);
   elements.chartLede.textContent = chart?.lede || "Reveal your horoscope to fill this section with your personal chart reading.";
   elements.chartAnalysis.innerHTML = (chart?.paragraphs || [
     "Your Sun, Moon, and Rising are ready in outline, but the full reading is still waiting to be revealed.",
     "Use The Genesis and tap Show my horoscope to bring this section to life.",
   ]).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("");
+}
+
+function renderKundliVisual(profile) {
+  if (!elements.kundliHouses || !elements.kundliPath || !elements.kundliPoints || !elements.kundliAnnotations) {
+    return;
+  }
+
+  const centerX = 300;
+  const centerY = 300;
+  const houseRadius = 166;
+  const pointRadius = 132;
+  const annotationRadius = 206;
+  const signs = [
+    { key: "sun", label: "Sun", sign: profile.sun, tone: "primary" },
+    { key: "moon", label: "Moon", sign: profile.moon, tone: "muted" },
+    { key: "rising", label: "Rising", sign: profile.rising, tone: "primary" },
+    { key: "work", label: "Work", sign: zodiacOrder[(profile.hash + 2) % zodiacOrder.length], tone: "muted" },
+    { key: "heart", label: "Heart", sign: zodiacOrder[(profile.hash + 9) % zodiacOrder.length], tone: "primary" },
+  ];
+
+  elements.kundliHouses.innerHTML = zodiacOrder
+    .map((sign, index) => {
+      const tick = polarPoint(centerX, centerY, houseRadius, signToAngle(index));
+      return `
+        <g class="kundli-house-mark">
+          <circle cx="${tick.x.toFixed(1)}" cy="${tick.y.toFixed(1)}" r="2.5" class="kundli-house-dot"></circle>
+          <text x="${tick.x.toFixed(1)}" y="${(tick.y + 18).toFixed(1)}" class="kundli-house-label" text-anchor="middle">${escapeHtml(sign.slice(0, 3).toUpperCase())}</text>
+        </g>
+      `;
+    })
+    .join("");
+
+  const plotted = signs.map((item, index) => {
+    const baseIndex = zodiacOrder.indexOf(item.sign);
+    const angle = signToAngle(baseIndex) + ((profile.hash + index * 17) % 10 - 5);
+    const point = polarPoint(centerX, centerY, pointRadius - index * 6, angle);
+    const note = polarPoint(centerX, centerY, annotationRadius - index * 6, angle);
+    return { ...item, angle, point, note };
+  });
+
+  elements.kundliPath.setAttribute(
+    "d",
+    plotted.map((item, index) => `${index === 0 ? "M" : "L"} ${item.point.x.toFixed(1)} ${item.point.y.toFixed(1)}`).join(" ") + " Z"
+  );
+
+  elements.kundliPoints.innerHTML = plotted
+    .map(
+      (item) => `
+        <circle
+          cx="${item.point.x.toFixed(1)}"
+          cy="${item.point.y.toFixed(1)}"
+          r="${item.key === "rising" ? 8 : 7}"
+          class="kundli-point${item.tone === "muted" ? " kundli-point--muted" : ""}"
+        ></circle>
+      `
+    )
+    .join("");
+
+  elements.kundliAnnotations.innerHTML = plotted
+    .slice(0, 3)
+    .map(
+      (item) => `
+        <g class="kundli-annotation">
+          <line
+            x1="${item.point.x.toFixed(1)}"
+            y1="${item.point.y.toFixed(1)}"
+            x2="${item.note.x.toFixed(1)}"
+            y2="${item.note.y.toFixed(1)}"
+            class="kundli-annotation-line"
+          ></line>
+          <text
+            x="${item.note.x.toFixed(1)}"
+            y="${(item.note.y - 8).toFixed(1)}"
+            class="kundli-annotation-label"
+            text-anchor="middle"
+          >${escapeHtml(item.label)}</text>
+          <text
+            x="${item.note.x.toFixed(1)}"
+            y="${(item.note.y + 10).toFixed(1)}"
+            class="kundli-annotation-sign"
+            text-anchor="middle"
+          >${escapeHtml(item.sign)}</text>
+        </g>
+      `
+    )
+    .join("");
+}
+
+function signToAngle(signIndex) {
+  return -90 + signIndex * 30;
+}
+
+function polarPoint(centerX, centerY, radius, angleDeg) {
+  const radians = angleDeg * (Math.PI / 180);
+  return {
+    x: centerX + Math.cos(radians) * radius,
+    y: centerY + Math.sin(radians) * radius,
+  };
 }
 
 function renderForecast(profile) {

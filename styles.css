@@ -719,6 +719,30 @@ textarea {
   fill: rgba(15, 15, 15, 0.5);
 }
 
+.kundli-house-dot {
+  fill: rgba(15, 15, 15, 0.24);
+}
+
+.kundli-house-label,
+.kundli-annotation-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  fill: rgba(15, 15, 15, 0.55);
+}
+
+.kundli-annotation-sign {
+  font-family: var(--font-body);
+  font-size: 16px;
+  fill: var(--color-primary);
+}
+
+.kundli-annotation-line {
+  stroke: rgba(15, 15, 15, 0.26);
+  stroke-width: 0.8;
+}
+
 .display-title {
   max-width: 11ch;
   font-size: clamp(3rem, 6vw, 5.8rem);

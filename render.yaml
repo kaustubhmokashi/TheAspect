@@ -8,5 +8,5 @@ services:
     envVars:
       - key: OPENROUTER_API_KEY
         sync: false
-      - key: OPENROUTER_MODEL
-        value: openrouter/free
+      - key: OPENROUTER_MODELS
+        value: openrouter/free,google/gemma-3-27b-it:free,meta-llama/llama-3.3-70b-instruct:free,google/gemma-3-12b-it:free

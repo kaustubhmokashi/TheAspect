@@ -3,6 +3,8 @@ const WORLD_CITIES_URL = "https://cdn.jsdelivr.net/npm/world-cities-json@1.0.1/d
 const ORACLE_COOLDOWN_MS = 25000;
 const GENERATION_STAGE_INTERVAL_MS = 2400;
 const GENERATION_STALL_MS = 18000;
+const GENERATION_ROUTE_SWAP_MS = 45000;
+const GENERATION_PERSIST_MS = 90000;
 
 const generationSequence = [
   {
@@ -326,6 +328,8 @@ let oracleInFlight = false;
 let generationStageTimer = null;
 let generationStageIndex = 0;
 let generationStallTimer = null;
+let generationRouteSwapTimer = null;
+let generationPersistTimer = null;
 
 hydrateForm();
 renderApp();
@@ -392,6 +396,10 @@ function toFriendlyReadingError(message) {
     return "Something slowed us down. Please try again in a little while.";
   }
 
+  if (/tried a few different routes/i.test(message)) {
+    return "We tried a few different paths, but none of them came through just yet.";
+  }
+
   if (/temporarily busy|rate limit|timed out|longer than/i.test(message)) {
     return "Things are a little busy right now. Please try again in a little while.";
   }
@@ -426,6 +434,26 @@ function startGenerationExperience() {
       progress: 96,
     });
   }, GENERATION_STALL_MS);
+  generationRouteSwapTimer = window.setTimeout(() => {
+    setGenerationFeedback({
+      stateName: "loading",
+      pulse: "Still trying",
+      stage: "Trying another path",
+      status: "We're taking a different route to finish your reading.",
+      detail: "Sometimes one path gets crowded. We're still working to bring your horoscope through.",
+      progress: 97,
+    });
+  }, GENERATION_ROUTE_SWAP_MS);
+  generationPersistTimer = window.setTimeout(() => {
+    setGenerationFeedback({
+      stateName: "loading",
+      pulse: "Still with you",
+      stage: "Finding the clearest path",
+      status: "We're still working on your reading.",
+      detail: "Thank you for staying with us. We're continuing to try different ways to complete it.",
+      progress: 98,
+    });
+  }, GENERATION_PERSIST_MS);
 }
 
 function stopGenerationExperience() {
@@ -437,6 +465,16 @@ function stopGenerationExperience() {
   if (generationStallTimer) {
     window.clearTimeout(generationStallTimer);
     generationStallTimer = null;
+  }
+
+  if (generationRouteSwapTimer) {
+    window.clearTimeout(generationRouteSwapTimer);
+    generationRouteSwapTimer = null;
+  }
+
+  if (generationPersistTimer) {
+    window.clearTimeout(generationPersistTimer);
+    generationPersistTimer = null;
   }
 }
 
@@ -641,8 +679,8 @@ function setupEvents() {
     }
   });
 
-  elements.printButton.addEventListener("click", () => {
-    window.print();
+  elements.printButton.addEventListener("click", async () => {
+    await downloadIssuePdf();
   });
 
   elements.oracleForm.addEventListener("submit", async (event) => {
@@ -951,6 +989,111 @@ function getVisibleIssue() {
 
 async function generateIssueWithAI(profile) {
   return postJson("/api/generate-issue", { profile });
+}
+
+async function downloadIssuePdf() {
+  if (!generationUnlocked || !state.generatedIssue) {
+    setGenerationFeedback({
+      stateName: "idle",
+      pulse: "Almost there",
+      stage: "Your PDF will be ready soon",
+      status: "Reveal your horoscope first.",
+      detail: "Once your reading is on the page, you can download it as a PDF in one step.",
+      progress: 0,
+    });
+    return;
+  }
+
+  if (!window.html2pdf) {
+    setGenerationFeedback({
+      stateName: "error",
+      pulse: "Not ready yet",
+      stage: "Download unavailable",
+      status: "The PDF export tool couldn't load just now.",
+      detail: "Please refresh the page and try again.",
+      progress: 100,
+    });
+    return;
+  }
+
+  const originalLabel = elements.printButton.textContent;
+  elements.printButton.disabled = true;
+  elements.printButton.textContent = "Preparing PDF...";
+
+  const exportRoot = document.createElement("div");
+  exportRoot.className = "pdf-export";
+  exportRoot.appendChild(buildPdfCover());
+  exportRoot.appendChild(document.querySelector(".content").cloneNode(true));
+  document.body.appendChild(exportRoot);
+
+  try {
+    await window.html2pdf()
+      .set({
+        margin: [10, 10, 14, 10],
+        filename: buildPdfFilename(),
+        image: { type: "jpeg", quality: 0.96 },
+        html2canvas: {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: "#fffef9",
+        },
+        jsPDF: {
+          unit: "mm",
+          format: "a4",
+          orientation: "portrait",
+        },
+        pagebreak: {
+          mode: ["css", "legacy"],
+        },
+      })
+      .from(exportRoot)
+      .save();
+
+    setGenerationFeedback({
+      stateName: "success",
+      pulse: "Saved",
+      stage: "Your PDF is ready",
+      status: "Your horoscope has been downloaded.",
+      detail: "You can keep exploring here or save the file for later.",
+      progress: 100,
+    });
+  } catch (_error) {
+    setGenerationFeedback({
+      stateName: "error",
+      pulse: "Not quite yet",
+      stage: "Download interrupted",
+      status: "We couldn't create the PDF just now.",
+      detail: "Please try again in a moment.",
+      progress: 100,
+    });
+  } finally {
+    exportRoot.remove();
+    elements.printButton.disabled = false;
+    elements.printButton.textContent = originalLabel;
+  }
+}
+
+function buildPdfCover() {
+  const profile = buildProfile(state);
+  const cover = document.createElement("section");
+  cover.className = "pdf-cover";
+  cover.innerHTML = `
+    <p class="pdf-cover__eyebrow">The Aspect</p>
+    <h1 class="pdf-cover__title">${escapeHtml(profile.name)}</h1>
+    <p class="pdf-cover__meta">${escapeHtml(state.birthdate)} · ${escapeHtml(state.birthtime)} · ${escapeHtml(profile.city)}</p>
+    <p class="pdf-cover__summary">A personal horoscope with chart, forecast, life themes, oracle, and journal prompts.</p>
+  `;
+  return cover;
+}
+
+function buildPdfFilename() {
+  const nameToken = (state.name || "the-aspect-horoscope")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+  return `${nameToken || "the-aspect-horoscope"}-horoscope.pdf`;
 }
 
 async function generateOracleAnswerWithAI(profile, question, generatedIssue) {

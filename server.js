@@ -5,9 +5,15 @@ const path = require("node:path");
 const envConfig = loadDotEnv(path.join(__dirname, ".env"));
 const PORT = Number(process.env.PORT || 3000);
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || envConfig.OPENROUTER_API_KEY || "";
-const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || envConfig.OPENROUTER_MODEL || "openrouter/free";
+const OPENROUTER_MODELS = parseModelCandidates(
+  process.env.OPENROUTER_MODELS ||
+  envConfig.OPENROUTER_MODELS ||
+  process.env.OPENROUTER_MODEL ||
+  envConfig.OPENROUTER_MODEL ||
+  "openrouter/free,google/gemma-3-27b-it:free,meta-llama/llama-3.3-70b-instruct:free,google/gemma-3-12b-it:free"
+);
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const OPENROUTER_TIMEOUT_MS = Number(process.env.OPENROUTER_TIMEOUT_MS || envConfig.OPENROUTER_TIMEOUT_MS || 240000);
+const OPENROUTER_TIMEOUT_MS = Number(process.env.OPENROUTER_TIMEOUT_MS || envConfig.OPENROUTER_TIMEOUT_MS || 45000);
 const ROOT = __dirname;
 
 const MIME_TYPES = {
@@ -257,9 +263,39 @@ function sendJson(res, statusCode, payload) {
 }
 
 async function askOpenRouterJSON(prompt, schema, maxOutputTokens, schemaName) {
-  let lastError = null;
   const schemaInstructions = buildSchemaInstructions(prompt, schema, schemaName);
-  const backoffMs = [0, 2500, 6000, 9000];
+  const candidateErrors = [];
+
+  for (const model of OPENROUTER_MODELS) {
+    try {
+      return await askOpenRouterJSONWithModel(model, schemaInstructions, maxOutputTokens);
+    } catch (error) {
+      candidateErrors.push({ model, error });
+      console.error("[openrouter] Model attempt failed:", {
+        model,
+        statusCode: error.statusCode || 500,
+        message: error.message,
+        details: error.details || null,
+      });
+
+      if (!isTransientModelError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  const lastAttempt = candidateErrors[candidateErrors.length - 1]?.error;
+  const exhaustedError = new Error("We tried a few different routes, but they were all busy. Please try again in a little while.");
+  exhaustedError.statusCode = lastAttempt?.statusCode || 503;
+  exhaustedError.details = candidateErrors
+    .map(({ model, error }) => `${model}: ${error.message}`)
+    .join(" | ");
+  throw exhaustedError;
+}
+
+async function askOpenRouterJSONWithModel(model, schemaInstructions, maxOutputTokens) {
+  let lastError = null;
+  const backoffMs = [0, 3000];
 
   for (let attempt = 0; attempt < backoffMs.length; attempt += 1) {
     if (backoffMs[attempt] > 0) {
@@ -279,7 +315,7 @@ async function askOpenRouterJSON(prompt, schema, maxOutputTokens, schemaName) {
         },
         signal: timeoutController.signal,
         body: JSON.stringify({
-          model: OPENROUTER_MODEL,
+          model,
           messages: [
             {
               role: "system",
@@ -305,11 +341,12 @@ async function askOpenRouterJSON(prompt, schema, maxOutputTokens, schemaName) {
       clearTimeout(timeoutId);
       if (error.name === "AbortError") {
         const timeoutError = new Error(
-          `The free AI route took longer than ${Math.ceil(OPENROUTER_TIMEOUT_MS / 1000)} seconds and timed out. Please try again.`
+          `This route took longer than ${Math.ceil(OPENROUTER_TIMEOUT_MS / 1000)} seconds. Trying another path may help.`
         );
         timeoutError.statusCode = 504;
-        timeoutError.details = `Timed out while waiting for ${OPENROUTER_MODEL}.`;
-        throw timeoutError;
+        timeoutError.details = `Timed out while waiting for ${model}.`;
+        lastError = timeoutError;
+        continue;
       }
       throw error;
     } finally {
@@ -321,7 +358,7 @@ async function askOpenRouterJSON(prompt, schema, maxOutputTokens, schemaName) {
       const error = new Error(formatOpenRouterApiError(errorText, response.status));
       error.statusCode = response.status;
       error.details = summarizeProviderError(errorText);
-      if ([429, 502, 503, 504].includes(response.status)) {
+      if (isTransientModelError(error)) {
         lastError = error;
         continue;
       }
@@ -338,11 +375,11 @@ async function askOpenRouterJSON(prompt, schema, maxOutputTokens, schemaName) {
     }
   }
 
-  if ([429, 502, 503, 504].includes(lastError?.statusCode)) {
-    throw lastError;
-  }
-
   throw new Error(`OpenRouter returned invalid JSON for a structured response. ${lastError ? `Last parse error: ${lastError.message}` : ""}`.trim());
+}
+
+function isTransientModelError(error) {
+  return [429, 502, 503, 504].includes(error?.statusCode);
 }
 
 function buildSchemaInstructions(prompt, schema, schemaName) {
@@ -389,6 +426,13 @@ function loadDotEnv(filePath) {
   } catch (_error) {
     return {};
   }
+}
+
+function parseModelCandidates(value) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function parseModelJson(text) {

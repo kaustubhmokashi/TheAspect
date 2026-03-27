@@ -1,6 +1,41 @@
 const STORAGE_KEY = "the-aspect-editorial-state-v3";
 const WORLD_CITIES_URL = "https://cdn.jsdelivr.net/npm/world-cities-json@1.0.1/data/cities.json";
 const ORACLE_COOLDOWN_MS = 25000;
+const GENERATION_STAGE_INTERVAL_MS = 2400;
+const GENERATION_STALL_MS = 18000;
+
+const generationSequence = [
+  {
+    label: "Reading the coordinates",
+    detail: "We are checking the submitted date, hour, and city against your editorial profile skeleton.",
+    progress: 14,
+  },
+  {
+    label: "Drafting the natal architecture",
+    detail: "The chart issue is being shaped into a sharper Sun, Moon, and Rising narrative with a magazine voice.",
+    progress: 32,
+  },
+  {
+    label: "Scoring the forecast spread",
+    detail: "Daily, weekly, and yearly transits are being arranged into a cleaner editorial cadence.",
+    progress: 54,
+  },
+  {
+    label: "Cutting the life path dossier",
+    detail: "Profession, family, and romance are being rewritten as a single coherent profile instead of generic guidance.",
+    progress: 73,
+  },
+  {
+    label: "Polishing the oracle opening",
+    detail: "The opening answer is being tuned so the issue feels authored before the first question is asked.",
+    progress: 88,
+  },
+  {
+    label: "Binding the issue",
+    detail: "Final copy is being sealed, checked for structure, and prepared for reveal.",
+    progress: 94,
+  },
+];
 
 const zodiacOrder = [
   "Aries",
@@ -236,6 +271,11 @@ const elements = {
   citySuggestions: document.getElementById("city-suggestions"),
   cityStatus: document.getElementById("city-status"),
   generateButton: document.getElementById("generate-button"),
+  generationConsole: document.getElementById("generation-console"),
+  generationPulse: document.getElementById("generation-pulse"),
+  generationStage: document.getElementById("generation-stage"),
+  generationDetail: document.getElementById("generation-detail"),
+  generationMeterFill: document.getElementById("generation-meter-fill"),
   generationStatus: document.getElementById("generation-status"),
   sidebarName: document.getElementById("sidebar-name"),
   sidebarMeta: document.getElementById("sidebar-meta"),
@@ -283,6 +323,9 @@ let generationUnlocked = false;
 let oracleCooldownUntil = 0;
 let oracleCooldownTimer = null;
 let oracleInFlight = false;
+let generationStageTimer = null;
+let generationStageIndex = 0;
+let generationStallTimer = null;
 
 hydrateForm();
 renderApp();
@@ -323,7 +366,14 @@ function hydrateForm() {
   elements.inputBirthtime.value = state.birthtime;
   elements.inputCity.value = state.city;
   syncGenerationGate();
-  setGenerationStatus("Nothing is generated until you click Generate my issue.", "idle");
+  setGenerationFeedback({
+    stateName: "idle",
+    pulse: "Standing by",
+    stage: "Awaiting your command",
+    status: "Nothing is generated until you click Generate my issue.",
+    detail: "We keep the full issue hidden until you deliberately compose it.",
+    progress: 0,
+  });
   syncOracleCooldown();
 }
 
@@ -335,6 +385,59 @@ function setGenerating(isGenerating) {
 function setGenerationStatus(message, stateName) {
   elements.generationStatus.textContent = message;
   elements.generationStatus.dataset.state = stateName;
+}
+
+function setGenerationFeedback({ stateName, pulse, stage, status, detail, progress }) {
+  elements.generationConsole.dataset.state = stateName;
+  elements.generationPulse.textContent = pulse;
+  elements.generationStage.textContent = stage;
+  elements.generationDetail.textContent = detail;
+  elements.generationMeterFill.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+  setGenerationStatus(status, stateName);
+}
+
+function startGenerationExperience() {
+  stopGenerationExperience();
+  generationStageIndex = 0;
+  renderGenerationStage();
+  generationStageTimer = window.setInterval(() => {
+    generationStageIndex = Math.min(generationStageIndex + 1, generationSequence.length - 1);
+    renderGenerationStage();
+  }, GENERATION_STAGE_INTERVAL_MS);
+  generationStallTimer = window.setTimeout(() => {
+    setGenerationFeedback({
+      stateName: "loading",
+      pulse: "Still working",
+      stage: "Taking longer than usual",
+      status: "The free AI pool is still processing your issue.",
+      detail: "This can happen on shared free routes. If nothing changes after another short wait, the request will time out instead of hanging forever.",
+      progress: 96,
+    });
+  }, GENERATION_STALL_MS);
+}
+
+function stopGenerationExperience() {
+  if (generationStageTimer) {
+    window.clearInterval(generationStageTimer);
+    generationStageTimer = null;
+  }
+
+  if (generationStallTimer) {
+    window.clearTimeout(generationStallTimer);
+    generationStallTimer = null;
+  }
+}
+
+function renderGenerationStage() {
+  const activeStage = generationSequence[generationStageIndex] || generationSequence[0];
+  setGenerationFeedback({
+    stateName: "loading",
+    pulse: "Composing now",
+    stage: activeStage.label,
+    status: "Your issue is being composed as a live editorial sequence.",
+    detail: activeStage.detail,
+    progress: activeStage.progress,
+  });
 }
 
 function syncGenerationGate() {
@@ -440,7 +543,7 @@ function setupEvents() {
 
     generationUnlocked = false;
     setGenerating(true);
-    setGenerationStatus("Generating chart, forecast, life path, oracle opening, and sanctuary...", "idle");
+    startGenerationExperience();
 
     try {
       state.generatedIssue = await generateIssueWithAI(profile);
@@ -451,9 +554,25 @@ function setupEvents() {
       syncGenerationGate();
       saveState();
       renderApp();
-      setGenerationStatus("Issue generated successfully.", "success");
+      stopGenerationExperience();
+      setGenerationFeedback({
+        stateName: "success",
+        pulse: "Issue complete",
+        stage: "Ready to read",
+        status: "Issue generated successfully.",
+        detail: "The full dossier is now unlocked below, including the forecast, life path, oracle opening, and sanctuary.",
+        progress: 100,
+      });
     } catch (error) {
-      setGenerationStatus(`Generation failed: ${error.message}`, "error");
+      stopGenerationExperience();
+      setGenerationFeedback({
+        stateName: "error",
+        pulse: "Transmission interrupted",
+        stage: "Issue paused",
+        status: `Generation failed: ${error.message}`,
+        detail: "Nothing below has been revealed yet. Adjust the request or retry once the route is available again.",
+        progress: 100,
+      });
     } finally {
       syncGenerationGate();
       setGenerating(false);

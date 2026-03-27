@@ -124,7 +124,24 @@
                   <p class="city-status" id="city-status">Loading searchable world city list...</p>
                 </label>
                 <button type="submit" class="button button--primary" id="generate-button">Generate my issue</button>
-                <p class="generation-status" id="generation-status">Waiting for profile and issue generation.</p>
+                <div class="generation-console" id="generation-console" data-state="idle" aria-live="polite">
+                  <div class="generation-console__header">
+                    <p class="generation-console__eyebrow">Issue dispatch</p>
+                    <p class="generation-console__pulse" id="generation-pulse">Standing by</p>
+                  </div>
+                  <div class="generation-console__meter">
+                    <span class="generation-console__meter-fill" id="generation-meter-fill"></span>
+                  </div>
+                  <div class="generation-console__body">
+                    <div>
+                      <p class="generation-console__stage" id="generation-stage">Awaiting your command</p>
+                      <p class="generation-status" id="generation-status">Nothing is generated until you click Generate my issue.</p>
+                    </div>
+                    <p class="generation-console__detail" id="generation-detail">
+                      We keep the full issue hidden until you deliberately compose it.
+                    </p>
+                  </div>
+                </div>
               </form>
 
               <div class="issue-summary">

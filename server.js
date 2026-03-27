@@ -7,6 +7,7 @@ const PORT = Number(process.env.PORT || 3000);
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || envConfig.OPENROUTER_API_KEY || "";
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || envConfig.OPENROUTER_MODEL || "openrouter/free";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_TIMEOUT_MS = Number(process.env.OPENROUTER_TIMEOUT_MS || envConfig.OPENROUTER_TIMEOUT_MS || 25000);
 const ROOT = __dirname;
 
 const MIME_TYPES = {
@@ -265,35 +266,55 @@ async function askOpenRouterJSON(prompt, schema, maxOutputTokens, schemaName) {
       await sleep(backoffMs[attempt]);
     }
 
-    const response = await fetch(OPENROUTER_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: OPENROUTER_MODEL,
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a precise editorial astrology writer. Return valid JSON only. Do not use markdown fences or explanatory text. The response must be a single JSON object.",
-          },
-          {
-            role: "user",
-            content: attempt === 0
-              ? schemaInstructions
-              : `${schemaInstructions}\n\nReturn only a raw JSON object. Do not use markdown fences. Do not add any explanatory text before or after the JSON.`,
-          },
-        ],
-        response_format: {
-          type: "json_object",
+    const timeoutController = new AbortController();
+    const timeoutId = setTimeout(() => timeoutController.abort(), OPENROUTER_TIMEOUT_MS);
+    let response;
+
+    try {
+      response = await fetch(OPENROUTER_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
         },
-        temperature: 0.25,
-        top_p: 0.8,
-        max_tokens: maxOutputTokens,
-      }),
-    });
+        signal: timeoutController.signal,
+        body: JSON.stringify({
+          model: OPENROUTER_MODEL,
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a precise editorial astrology writer. Return valid JSON only. Do not use markdown fences or explanatory text. The response must be a single JSON object.",
+            },
+            {
+              role: "user",
+              content: attempt === 0
+                ? schemaInstructions
+                : `${schemaInstructions}\n\nReturn only a raw JSON object. Do not use markdown fences. Do not add any explanatory text before or after the JSON.`,
+            },
+          ],
+          response_format: {
+            type: "json_object",
+          },
+          temperature: 0.25,
+          top_p: 0.8,
+          max_tokens: maxOutputTokens,
+        }),
+      });
+    } catch (error) {
+      clearTimeout(timeoutId);
+      if (error.name === "AbortError") {
+        const timeoutError = new Error(
+          `The free AI route took longer than ${Math.ceil(OPENROUTER_TIMEOUT_MS / 1000)} seconds and timed out. Please try again.`
+        );
+        timeoutError.statusCode = 504;
+        timeoutError.details = `Timed out while waiting for ${OPENROUTER_MODEL}.`;
+        throw timeoutError;
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       const errorText = await response.text();

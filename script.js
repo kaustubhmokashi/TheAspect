@@ -579,7 +579,7 @@ function setupEvents() {
       return;
     }
 
-    if (!submittedProfile.city) {
+    if (!placeholderMode && !submittedProfile.city) {
       setGenerationStatus("Choose a birthplace from the city list.", "error");
       return;
     }
@@ -587,9 +587,9 @@ function setupEvents() {
     const normalizedProfile = placeholderMode
       ? {
         name: "Sample Reading",
-        birthdate: "dd/mm/yyyy",
-        birthtime: "00:00 am",
-        city: submittedProfile.city,
+        birthdate: isBirthdateValid(submittedProfile.birthdate) ? submittedProfile.birthdate : "dd/mm/yyyy",
+        birthtime: isBirthtimeValid(submittedProfile.birthtime) ? submittedProfile.birthtime : "00:00 am",
+        city: submittedProfile.city || "Sample City",
       }
       : submittedProfile;
 
@@ -1184,42 +1184,58 @@ async function downloadIssuePdf() {
   elements.printButton.textContent = "Preparing PDF...";
   cleanupPdfArtifacts();
 
-  const exportRoot = document.createElement("div");
-  exportRoot.className = "pdf-export";
-  exportRoot.appendChild(buildPdfDocument());
-  document.body.appendChild(exportRoot);
-
   try {
-    const worker = window.html2pdf()
-      .set({
-        margin: [10, 10, 14, 10],
-        filename: buildPdfFilename(),
-        image: { type: "png", quality: 1 },
-        html2canvas: {
-          scale: 2,
-          useCORS: true,
-          backgroundColor: "#fffef9",
-        },
-        jsPDF: {
-          unit: "mm",
-          format: "a4",
-          orientation: "portrait",
-        },
-        pagebreak: {
-          mode: ["css", "legacy"],
-        },
-      })
-      .from(exportRoot);
+    const shell = document.querySelector(".shell");
+    const html2canvas = window.html2canvas;
+    const jsPDF = window.jspdf?.jsPDF;
 
-    const pdfBlob = await worker.outputPdf("blob");
+    if (!shell || !html2canvas || !jsPDF) {
+      throw new Error("PDF tools unavailable");
+    }
+
+    const canvas = await html2canvas(shell, {
+      scale: 1.6,
+      useCORS: true,
+      backgroundColor: "#fffef9",
+      scrollX: 0,
+      scrollY: -window.scrollY,
+      windowWidth: document.documentElement.scrollWidth,
+      windowHeight: shell.scrollHeight,
+    });
+
+    const pdf = new jsPDF({
+      unit: "mm",
+      format: "a4",
+      orientation: "portrait",
+    });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imageWidth = pageWidth;
+    const imageHeight = (canvas.height * imageWidth) / canvas.width;
+    const imageData = canvas.toDataURL("image/png");
+
+    let remainingHeight = imageHeight;
+    let offsetY = 0;
+
+    pdf.addImage(imageData, "PNG", 0, offsetY, imageWidth, imageHeight, undefined, "FAST");
+    remainingHeight -= pageHeight;
+
+    while (remainingHeight > 0) {
+      offsetY = remainingHeight - imageHeight;
+      pdf.addPage();
+      pdf.addImage(imageData, "PNG", 0, offsetY, imageWidth, imageHeight, undefined, "FAST");
+      remainingHeight -= pageHeight;
+    }
+
+    const pdfBlob = pdf.output("blob");
     triggerPdfDownload(pdfBlob, buildPdfFilename());
 
     setGenerationFeedback({
       stateName: "success",
       pulse: "Saved",
       stage: "Your PDF is ready",
-      status: "Your horoscope has been downloaded.",
-      detail: "You can keep exploring here or save the file for later.",
+      status: "Your page has been downloaded as a PDF.",
+      detail: "It captures the reading exactly as it appears on the page.",
       progress: 100,
       trace: "",
     });
@@ -1235,7 +1251,6 @@ async function downloadIssuePdf() {
       trace: error?.message || "Unknown PDF export error",
     });
   } finally {
-    exportRoot.remove();
     cleanupPdfArtifacts();
     elements.printButton.disabled = false;
     elements.printButton.textContent = originalLabel;
@@ -1244,7 +1259,7 @@ async function downloadIssuePdf() {
 }
 
 async function ensurePdfExporter() {
-  if (window.html2pdf) {
+  if (window.html2pdf && window.html2canvas && window.jspdf?.jsPDF) {
     return true;
   }
 
@@ -1255,7 +1270,7 @@ async function ensurePdfExporter() {
 
   for (const source of sources) {
     const loaded = await loadExternalScript(source);
-    if (loaded && window.html2pdf) {
+    if (loaded && window.html2pdf && window.html2canvas && window.jspdf?.jsPDF) {
       return true;
     }
   }
@@ -1328,133 +1343,6 @@ function buildPdfCover() {
     <p class="pdf-cover__summary">A personal horoscope with chart, forecast, life themes, and oracle guidance.</p>
   `;
   return cover;
-}
-
-function buildPdfDocument() {
-  const profile = buildProfile(state);
-  const issue = state.generatedIssue;
-  const history = getPdfOracleEntries(issue);
-
-  const documentRoot = document.createElement("article");
-  documentRoot.className = "pdf-doc";
-
-  documentRoot.appendChild(buildPdfCover());
-
-  const sectionsMarkup = `
-    <section class="pdf-section">
-      <p class="pdf-section__eyebrow">The Chart</p>
-      <h2 class="pdf-section__title">Core placements</h2>
-      <p class="pdf-section__lede">${escapeHtml(issue.chart.lede)}</p>
-      <div class="pdf-meta-grid">
-        <div class="pdf-meta-item">
-          <span class="pdf-meta-item__label">Sun</span>
-          <strong class="pdf-meta-item__value">${escapeHtml(profile.sun)}</strong>
-        </div>
-        <div class="pdf-meta-item">
-          <span class="pdf-meta-item__label">Moon</span>
-          <strong class="pdf-meta-item__value">${escapeHtml(profile.moon)}</strong>
-        </div>
-        <div class="pdf-meta-item">
-          <span class="pdf-meta-item__label">Rising</span>
-          <strong class="pdf-meta-item__value">${escapeHtml(profile.rising)}</strong>
-        </div>
-        <div class="pdf-meta-item">
-          <span class="pdf-meta-item__label">Birthplace</span>
-          <strong class="pdf-meta-item__value">${escapeHtml(profile.city)}</strong>
-        </div>
-      </div>
-      <div class="pdf-copy">
-        ${issue.chart.paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}
-      </div>
-    </section>
-
-    <section class="pdf-section">
-      <p class="pdf-section__eyebrow">The Forecast</p>
-      <h2 class="pdf-section__title">Current timing</h2>
-      ${buildPdfForecastBlock("Daily", issue.forecast.daily)}
-      ${buildPdfForecastBlock("Weekly", issue.forecast.weekly)}
-      ${buildPdfForecastBlock("Yearly", issue.forecast.yearly)}
-    </section>
-
-    <section class="pdf-section">
-      <p class="pdf-section__eyebrow">The Life Path</p>
-      <h2 class="pdf-section__title">Career, family, and romance</h2>
-      <p class="pdf-section__lede">${escapeHtml(issue.life.lede)}</p>
-      <div class="pdf-stack">
-        ${issue.life.cards.map((card) => buildPdfLifeCard(card)).join("")}
-      </div>
-    </section>
-
-    <section class="pdf-section">
-      <p class="pdf-section__eyebrow">The Oracle</p>
-      <h2 class="pdf-section__title">Questions and answers</h2>
-      <div class="pdf-stack">
-        ${history.length ? history.map((entry, index) => buildPdfOracleEntry(entry, index)).join("") : `<p class="pdf-section__lede">No oracle exchange has been added to this export yet.</p>`}
-      </div>
-    </section>
-  `;
-
-  documentRoot.insertAdjacentHTML("beforeend", sectionsMarkup);
-  return documentRoot;
-}
-
-function buildPdfForecastBlock(label, block) {
-  return `
-    <article class="pdf-block">
-      <p class="pdf-block__eyebrow">${escapeHtml(label)}</p>
-      <h3 class="pdf-block__title">${escapeHtml(block.headline)}</h3>
-      <p class="pdf-block__body">${escapeHtml(block.body)}</p>
-      <ul class="pdf-bullets">${block.directives.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
-    </article>
-  `;
-}
-
-function buildPdfLifeCard(card) {
-  return `
-    <article class="pdf-block">
-      <p class="pdf-block__eyebrow">${escapeHtml(card.eyebrow)}</p>
-      <h3 class="pdf-block__title">${escapeHtml(card.title)}</h3>
-      <p class="pdf-block__body">${escapeHtml(card.body)}</p>
-      <ul class="pdf-bullets">${card.list.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
-    </article>
-  `;
-}
-
-function buildPdfOracleEntry(entry, index) {
-  return `
-    <article class="pdf-block">
-      <p class="pdf-block__eyebrow">${index === 0 ? "Opening exchange" : `Oracle exchange ${String(index).padStart(2, "0")}`}</p>
-      <h3 class="pdf-block__title">${escapeHtml(entry.question)}</h3>
-      <p class="pdf-block__body">${escapeHtml(entry.answer)}</p>
-    </article>
-  `;
-}
-
-function getPdfOracleEntries(issue) {
-  const candidates = [];
-
-  if (issue?.oracleWelcome?.question && issue?.oracleWelcome?.answer) {
-    candidates.push(issue.oracleWelcome);
-  }
-
-  if (Array.isArray(state.oracleHistory) && state.oracleHistory.length) {
-    candidates.push(...state.oracleHistory);
-  }
-
-  const seen = new Set();
-  return candidates.filter((entry) => {
-    if (!hasMeaningfulText(entry?.question) || !hasMeaningfulText(entry?.answer)) {
-      return false;
-    }
-
-    const key = `${entry.question.trim()}::${entry.answer.trim()}`;
-    if (seen.has(key)) {
-      return false;
-    }
-
-    seen.add(key);
-    return true;
-  });
 }
 
 function buildPdfFilename() {
@@ -1669,7 +1557,7 @@ function isBirthtimeValid(value) {
 }
 
 function isPlaceholderSeed(value) {
-  return value?.name === "0" && value?.birthdate === "0" && value?.birthtime === "0" && hasMeaningfulText(value?.city);
+  return value?.name === "0";
 }
 
 function escapeHtml(value) {

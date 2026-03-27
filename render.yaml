@@ -6,5 +6,7 @@ services:
     buildCommand: ""
     startCommand: node server.js
     envVars:
+      - key: OPENROUTER_API_KEY
+        sync: false
       - key: OPENROUTER_MODEL
         value: google/gemma-3-27b-it:free

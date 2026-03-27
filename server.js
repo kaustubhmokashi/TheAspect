@@ -2,9 +2,10 @@ const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
 
+const envConfig = loadDotEnv(path.join(__dirname, ".env"));
 const PORT = Number(process.env.PORT || 3000);
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "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";
-const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "google/gemma-3-27b-it:free";
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || envConfig.OPENROUTER_API_KEY || "";
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || envConfig.OPENROUTER_MODEL || "google/gemma-3-27b-it:free";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const ROOT = __dirname;
 
@@ -341,6 +342,32 @@ function summarizeProviderError(errorText) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function loadDotEnv(filePath) {
+  try {
+    const raw = fs.readFileSync(filePath, "utf8");
+    return raw.split(/\r?\n/).reduce((accumulator, line) => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) {
+        return accumulator;
+      }
+
+      const separatorIndex = trimmed.indexOf("=");
+      if (separatorIndex === -1) {
+        return accumulator;
+      }
+
+      const key = trimmed.slice(0, separatorIndex).trim();
+      const value = trimmed.slice(separatorIndex + 1).trim().replace(/^['"]|['"]$/g, "");
+      if (key) {
+        accumulator[key] = value;
+      }
+      return accumulator;
+    }, {});
+  } catch (_error) {
+    return {};
+  }
 }
 
 function parseModelJson(text) {

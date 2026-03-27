@@ -561,27 +561,44 @@ function setupEvents() {
   elements.profileForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    if (!isBirthdateValid(elements.inputBirthdate.value.trim())) {
+    const submittedProfile = {
+      name: elements.inputName.value.trim(),
+      birthdate: elements.inputBirthdate.value.trim(),
+      birthtime: elements.inputBirthtime.value.trim(),
+      city: elements.inputCity.value.trim(),
+    };
+    const placeholderMode = isPlaceholderSeed(submittedProfile);
+
+    if (!placeholderMode && !isBirthdateValid(submittedProfile.birthdate)) {
       setGenerationStatus("Enter birthday in dd/mm/yyyy format.", "error");
       return;
     }
 
-    if (!isBirthtimeValid(elements.inputBirthtime.value.trim())) {
+    if (!placeholderMode && !isBirthtimeValid(submittedProfile.birthtime)) {
       setGenerationStatus("Enter time in 00:00 am format.", "error");
       return;
     }
 
-    if (!elements.inputCity.value.trim()) {
+    if (!submittedProfile.city) {
       setGenerationStatus("Choose a birthplace from the city list.", "error");
       return;
     }
 
+    const normalizedProfile = placeholderMode
+      ? {
+        name: "Sample Reading",
+        birthdate: "dd/mm/yyyy",
+        birthtime: "00:00 am",
+        city: submittedProfile.city,
+      }
+      : submittedProfile;
+
     const previousSignature = `${state.name}|${state.birthdate}|${state.birthtime}|${state.city}`;
 
-    state.name = elements.inputName.value.trim();
-    state.birthdate = elements.inputBirthdate.value;
-    state.birthtime = elements.inputBirthtime.value;
-    state.city = elements.inputCity.value.trim();
+    state.name = normalizedProfile.name;
+    state.birthdate = normalizedProfile.birthdate;
+    state.birthtime = normalizedProfile.birthtime;
+    state.city = normalizedProfile.city;
 
     const nextSignature = `${state.name}|${state.birthdate}|${state.birthtime}|${state.city}`;
     if (previousSignature !== nextSignature) {
@@ -596,7 +613,9 @@ function setupEvents() {
     startGenerationExperience();
 
     try {
-      state.generatedIssue = await generateIssueWithAI(profile);
+      state.generatedIssue = placeholderMode
+        ? buildPlaceholderIssue(profile)
+        : await generateIssueWithAI(profile);
       state.oracleHistory = [];
       generationUnlocked = true;
       startOracleCooldown(ORACLE_COOLDOWN_MS);
@@ -607,9 +626,11 @@ function setupEvents() {
       setGenerationFeedback({
         stateName: "success",
         pulse: "Ready to explore",
-        stage: "Your reading is here",
-        status: "Your horoscope is ready.",
-        detail: "You can now explore your chart, forecast, life themes, and the Oracle below.",
+        stage: placeholderMode ? "Your sample reading is here" : "Your reading is here",
+        status: placeholderMode ? "Sample horoscope is ready." : "Your horoscope is ready.",
+        detail: placeholderMode
+          ? "This version uses placeholder writing so you can preview the layout and export the PDF."
+          : "You can now explore your chart, forecast, life themes, and the Oracle below.",
         progress: 100,
         trace: "",
       });
@@ -1047,6 +1068,87 @@ async function generateIssueWithAI(profile) {
     throw new Error("The reading came back empty, so we're trying again.");
   }
   return issue;
+}
+
+function buildPlaceholderIssue(profile) {
+  return {
+    chart: {
+      lede: `This is a sample chart reading for ${profile.city}, designed to preview the editorial layout before a live horoscope is generated.`,
+      paragraphs: [
+        `${profile.name} is shown here with a ${profile.sun} Sun, ${profile.moon} Moon, and ${profile.rising} Rising so the overall structure feels complete in the exported document.`,
+        `The emotional tone, timing language, and life themes in this version are intentionally illustrative. They are here to help you test the reading flow, typography, and downloadable PDF.`,
+        `Once real birth details are entered, this section is replaced with a full personalized reading generated for the exact profile submitted.`,
+      ],
+    },
+    forecast: {
+      daily: {
+        headline: "A calm placeholder for the day ahead",
+        body: `Today is represented as a composed editorial sample: steady focus, one thoughtful conversation, and a gentle sense of forward motion through ${profile.city}.`,
+        directives: [
+          "Use this placeholder to confirm the daily block appears correctly in the PDF.",
+          "Check that the headline, body copy, and bullet guidance are all readable.",
+          "Replace the sample with a real reading whenever you are ready.",
+        ],
+      },
+      weekly: {
+        headline: "A sample week with room to revise",
+        body: "This weekly spread is intentionally broad and balanced, showing how longer-form forecast writing will sit on the page without relying on live model output.",
+        directives: [
+          "Review the spacing and pacing of the weekly section.",
+          "Confirm the exported PDF preserves the hierarchy cleanly.",
+          "Use the sample version for layout approval before live generation.",
+        ],
+      },
+      yearly: {
+        headline: "A placeholder long-range horizon",
+        body: `The longer arc here is simple on purpose: a year of refinement, stronger boundaries, and a quieter but more confident sense of direction.`,
+        directives: [
+          "Make sure this yearly section prints without clipping.",
+          "Check that the tone still feels polished in a text-only export.",
+          "Treat this as sample copy rather than a literal prediction.",
+        ],
+      },
+    },
+    life: {
+      lede: "These life path cards are sample editorial modules meant to demonstrate hierarchy, readability, and export quality.",
+      cards: [
+        {
+          eyebrow: "Career",
+          title: "Work and vocation",
+          body: "A placeholder career reading should still feel measured and useful, giving the exported report enough substance to look complete.",
+          list: [
+            "Review whether headings and body copy feel balanced.",
+            "Confirm lists remain readable across page breaks.",
+            "Use this card to test the professional guidance format.",
+          ],
+        },
+        {
+          eyebrow: "Family",
+          title: "Private bonds",
+          body: "This section stands in for family and home themes, showing the tone and density of a finished reading without waiting on a live response.",
+          list: [
+            "Check spacing between cards in the PDF.",
+            "Make sure paragraph lengths feel comfortable to read.",
+            "Use the placeholder to validate the overall section rhythm.",
+          ],
+        },
+        {
+          eyebrow: "Romance",
+          title: "Love and attachment",
+          body: "This sample romance card exists so the emotional register of the report still feels present, even in a test export.",
+          list: [
+            "Review how the card title and list appear in the download.",
+            "Confirm this section reads clearly in a simple text layout.",
+            "Swap it for a real reading once the live route is available.",
+          ],
+        },
+      ],
+    },
+    oracleWelcome: {
+      question: "What is this sample reading for?",
+      answer: "It is a placeholder version of The Aspect, useful for testing the layout, the section flow, and the exported PDF before generating a live horoscope.",
+    },
+  };
 }
 
 async function downloadIssuePdf() {
@@ -1564,6 +1666,10 @@ function isBirthdateValid(value) {
 
 function isBirthtimeValid(value) {
   return Boolean(parseBirthtimeInput(value));
+}
+
+function isPlaceholderSeed(value) {
+  return value?.name === "0" && value?.birthdate === "0" && value?.birthtime === "0" && hasMeaningfulText(value?.city);
 }
 
 function escapeHtml(value) {

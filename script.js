@@ -6,33 +6,33 @@ const GENERATION_STALL_MS = 18000;
 
 const generationSequence = [
   {
-    label: "Reading the coordinates",
-    detail: "We are checking the submitted date, hour, and city against your editorial profile skeleton.",
+    label: "Reading your birth details",
+    detail: "We're taking in your date, time, and birthplace before the reading begins.",
     progress: 14,
   },
   {
-    label: "Drafting the natal architecture",
-    detail: "The chart issue is being shaped into a sharper Sun, Moon, and Rising narrative with a magazine voice.",
+    label: "Preparing your chart",
+    detail: "Your Sun, Moon, and Rising are being shaped into a clearer personal reading.",
     progress: 32,
   },
   {
-    label: "Scoring the forecast spread",
-    detail: "Daily, weekly, and yearly transits are being arranged into a cleaner editorial cadence.",
+    label: "Looking ahead",
+    detail: "We're sketching out the daily, weekly, and yearly themes around your chart.",
     progress: 54,
   },
   {
-    label: "Cutting the life path dossier",
-    detail: "Profession, family, and romance are being rewritten as a single coherent profile instead of generic guidance.",
+    label: "Writing your life themes",
+    detail: "Career, family, and romance are being brought into one cohesive story.",
     progress: 73,
   },
   {
-    label: "Polishing the oracle opening",
-    detail: "The opening answer is being tuned so the issue feels authored before the first question is asked.",
+    label: "Finishing the first impression",
+    detail: "We're refining the opening so the reading feels complete from the very first glance.",
     progress: 88,
   },
   {
-    label: "Binding the issue",
-    detail: "Final copy is being sealed, checked for structure, and prepared for reveal.",
+    label: "Putting it all together",
+    detail: "Your reading is being gathered into one final, polished experience.",
     progress: 94,
   },
 ];
@@ -368,10 +368,10 @@ function hydrateForm() {
   syncGenerationGate();
   setGenerationFeedback({
     stateName: "idle",
-    pulse: "Standing by",
-    stage: "Awaiting your command",
-    status: "Nothing is generated until you click Generate my issue.",
-    detail: "We keep the full issue hidden until you deliberately compose it.",
+    pulse: "Ready when you are",
+    stage: "Waiting for your details",
+    status: "Nothing appears until you choose to reveal your horoscope.",
+    detail: "Once you're ready, we'll turn your birth details into a full reading.",
     progress: 0,
   });
   syncOracleCooldown();
@@ -379,12 +379,24 @@ function hydrateForm() {
 
 function setGenerating(isGenerating) {
   elements.generateButton.disabled = isGenerating;
-  elements.generateButton.textContent = isGenerating ? "Generating issue..." : "Generate my issue";
+  elements.generateButton.textContent = isGenerating ? "Preparing your reading..." : "Show my horoscope";
 }
 
 function setGenerationStatus(message, stateName) {
   elements.generationStatus.textContent = message;
   elements.generationStatus.dataset.state = stateName;
+}
+
+function toFriendlyReadingError(message) {
+  if (!message) {
+    return "Something slowed us down. Please try again in a little while.";
+  }
+
+  if (/temporarily busy|rate limit|timed out|longer than/i.test(message)) {
+    return "Things are a little busy right now. Please try again in a little while.";
+  }
+
+  return "We couldn't prepare your reading just yet. Please try again in a little while.";
 }
 
 function setGenerationFeedback({ stateName, pulse, stage, status, detail, progress }) {
@@ -407,10 +419,10 @@ function startGenerationExperience() {
   generationStallTimer = window.setTimeout(() => {
     setGenerationFeedback({
       stateName: "loading",
-      pulse: "Still working",
-      stage: "Taking longer than usual",
-      status: "The free AI pool is still processing your issue.",
-      detail: "This can happen on shared free routes. If nothing changes after another short wait, the request will time out instead of hanging forever.",
+      pulse: "Still with you",
+      stage: "Putting the final pieces together",
+      status: "Your reading is taking a little longer than usual.",
+      detail: "Stay on this page and we'll keep working in the background.",
       progress: 96,
     });
   }, GENERATION_STALL_MS);
@@ -432,9 +444,9 @@ function renderGenerationStage() {
   const activeStage = generationSequence[generationStageIndex] || generationSequence[0];
   setGenerationFeedback({
     stateName: "loading",
-    pulse: "Composing now",
+    pulse: "Creating now",
     stage: activeStage.label,
-    status: "Your issue is being composed as a live editorial sequence.",
+    status: "Your horoscope is on its way.",
     detail: activeStage.detail,
     progress: activeStage.progress,
   });
@@ -484,7 +496,7 @@ function syncOracleCooldown() {
     elements.oracleSubmitButton.disabled = true;
     elements.oracleSubmitButton.textContent = "Interrogate";
     elements.oracleCooldownStatus.dataset.state = "cooldown";
-    elements.oracleCooldownStatus.textContent = "Generate the issue first to unlock The Oracle.";
+    elements.oracleCooldownStatus.textContent = "Reveal your horoscope first to open The Oracle.";
     return;
   }
 
@@ -495,7 +507,7 @@ function syncOracleCooldown() {
     elements.oracleSubmitButton.disabled = true;
     elements.oracleSubmitButton.textContent = "Cooling down";
     elements.oracleCooldownStatus.dataset.state = "cooldown";
-    elements.oracleCooldownStatus.textContent = `Oracle cooling down to stay within free-tier limits. Try again in ${remainingSeconds}s.`;
+    elements.oracleCooldownStatus.textContent = `Give it a moment, then try again in about ${remainingSeconds}s.`;
     return;
   }
 
@@ -557,20 +569,20 @@ function setupEvents() {
       stopGenerationExperience();
       setGenerationFeedback({
         stateName: "success",
-        pulse: "Issue complete",
-        stage: "Ready to read",
-        status: "Issue generated successfully.",
-        detail: "The full dossier is now unlocked below, including the forecast, life path, oracle opening, and sanctuary.",
+        pulse: "Ready to explore",
+        stage: "Your reading is here",
+        status: "Your horoscope is ready.",
+        detail: "You can now explore your chart, forecast, life themes, oracle, and journal below.",
         progress: 100,
       });
     } catch (error) {
       stopGenerationExperience();
       setGenerationFeedback({
         stateName: "error",
-        pulse: "Transmission interrupted",
-        stage: "Issue paused",
-        status: `Generation failed: ${error.message}`,
-        detail: "Nothing below has been revealed yet. Adjust the request or retry once the route is available again.",
+        pulse: "Not quite yet",
+        stage: "We hit a delay",
+        status: toFriendlyReadingError(error.message),
+        detail: "Nothing below has been revealed yet. Please try again in a little while.",
         progress: 100,
       });
     } finally {
@@ -777,10 +789,10 @@ function renderChart(profile) {
   elements.sunCopy.textContent = sunMeta.sun;
   elements.moonCopy.textContent = moonMeta.moon;
   elements.risingCopy.textContent = risingMeta.rising;
-  elements.chartLede.textContent = chart?.lede || "Generate the issue to fill this section with AI-authored natal analysis.";
+  elements.chartLede.textContent = chart?.lede || "Reveal your horoscope to fill this section with your personal chart reading.";
   elements.chartAnalysis.innerHTML = (chart?.paragraphs || [
-    "Your Sun, Moon, and Rising are calculated locally, but the long-form editorial reading is waiting for generation.",
-    "Use The Genesis and hit Generate my issue to populate this spread with chart-specific narrative instead of placeholder copy.",
+    "Your Sun, Moon, and Rising are ready in outline, but the full reading is still waiting to be revealed.",
+    "Use The Genesis and tap Show my horoscope to bring this section to life.",
   ]).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("");
 }
 
@@ -791,12 +803,12 @@ function renderForecast(profile) {
 
   elements.forecastLede.textContent = visibleIssue
     ? `Current transit material is generated from ${profile.name}'s ${profile.sun}-${profile.moon}-${profile.rising} axis and ${profile.city}'s submitted coordinates.`
-    : "Daily, weekly, and yearly spreads will appear here after the issue is generated.";
+    : "Daily, weekly, and yearly guidance will appear here once your horoscope is ready.";
   elements.forecastRangeLabel.textContent = range.label;
-  elements.forecastHeadline.textContent = active?.headline || "Awaiting generated forecast";
-  elements.forecastBody.textContent = active?.body || "Provide profile data and click Generate my issue to create this editorial forecast.";
+  elements.forecastHeadline.textContent = active?.headline || "Your forecast will appear here";
+  elements.forecastBody.textContent = active?.body || "Share your birth details and choose Show my horoscope to reveal this forecast.";
   elements.forecastDirectives.innerHTML = (active?.directives || [
-    "Generate the issue to receive tailored directives.",
+    "Reveal your horoscope to receive tailored guidance.",
   ]).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
   elements.intensityMeta.textContent = `Window · ${range.window}`;
   elements.barsStart.textContent = range.start;
@@ -815,7 +827,7 @@ function renderLifePath(profile) {
   const life = getVisibleIssue()?.life;
   const cards = life?.cards || [];
 
-  elements.lifeLede.textContent = life?.lede || "AI will populate profession, family, and romance assessments from your submitted profile.";
+  elements.lifeLede.textContent = life?.lede || "Your profession, family, and romance themes will appear here once your reading is ready.";
   elements.lifeGrid.innerHTML = cards
     .map(
       (card) => `
@@ -846,7 +858,7 @@ function renderOracle() {
       : [
         {
           question: `What does ${profile.name}'s issue begin with?`,
-          answer: "Generate the issue first, then ask a question here for a custom oracle response.",
+          answer: "Reveal your horoscope first, then ask a question here for a personal answer.",
         },
       ];
 
@@ -886,7 +898,7 @@ function renderSanctuary(profile) {
     .join("") || `
       <article class="journal-card">
         <p class="journal-card__meta">Sanctuary pending</p>
-        <p class="journal-card__body">Generate the issue to receive a transit theme and two opening journal reflections.</p>
+        <p class="journal-card__body">Reveal your horoscope to receive a theme and two opening reflections.</p>
       </article>
     `;
 }

@@ -7,7 +7,7 @@ const PORT = Number(process.env.PORT || 3000);
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || envConfig.OPENROUTER_API_KEY || "";
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || envConfig.OPENROUTER_MODEL || "openrouter/free";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const OPENROUTER_TIMEOUT_MS = Number(process.env.OPENROUTER_TIMEOUT_MS || envConfig.OPENROUTER_TIMEOUT_MS || 25000);
+const OPENROUTER_TIMEOUT_MS = Number(process.env.OPENROUTER_TIMEOUT_MS || envConfig.OPENROUTER_TIMEOUT_MS || 240000);
 const ROOT = __dirname;
 
 const MIME_TYPES = {
@@ -259,9 +259,9 @@ function sendJson(res, statusCode, payload) {
 async function askOpenRouterJSON(prompt, schema, maxOutputTokens, schemaName) {
   let lastError = null;
   const schemaInstructions = buildSchemaInstructions(prompt, schema, schemaName);
-  const backoffMs = [0, 2500, 6000];
+  const backoffMs = [0, 2500, 6000, 9000];
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
+  for (let attempt = 0; attempt < backoffMs.length; attempt += 1) {
     if (backoffMs[attempt] > 0) {
       await sleep(backoffMs[attempt]);
     }
@@ -321,7 +321,7 @@ async function askOpenRouterJSON(prompt, schema, maxOutputTokens, schemaName) {
       const error = new Error(formatOpenRouterApiError(errorText, response.status));
       error.statusCode = response.status;
       error.details = summarizeProviderError(errorText);
-      if (response.status === 429) {
+      if ([429, 502, 503, 504].includes(response.status)) {
         lastError = error;
         continue;
       }
@@ -338,7 +338,7 @@ async function askOpenRouterJSON(prompt, schema, maxOutputTokens, schemaName) {
     }
   }
 
-  if (lastError?.statusCode === 429) {
+  if ([429, 502, 503, 504].includes(lastError?.statusCode)) {
     throw lastError;
   }
 
@@ -553,6 +553,10 @@ function formatOpenRouterApiError(errorText, statusCode) {
       return retryDelay
         ? `OpenRouter rate limit reached. Please wait about ${retryDelay} and try again.`
         : "OpenRouter rate limit reached. Please wait a short while and try again.";
+    }
+
+    if ([502, 503, 504].includes(statusCode)) {
+      return "The free AI route is temporarily busy upstream. Please try again in a moment.";
     }
 
     if (statusCode === 402) {

@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Aspect | AI-Driven Editorial Astrology</title>
+    <meta
+      name="description"
+      content="The Aspect is an editorial astrology platform blending AI-generated insight with high-contrast, magazine-quality design."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="sidebar__brand">
+          <p class="eyebrow">Editorial Astrology</p>
+          <h1>THE ASPECT</h1>
+          <p class="sidebar__tag">Celestial architecture for modern seekers</p>
+          <button type="button" class="button button--secondary sidebar__print" id="print-button">Print issue</button>
+        </div>
+
+        <nav class="sidebar__nav" aria-label="Primary">
+          <a href="#genesis" class="nav-link is-active" data-section-link="genesis">
+            <span class="nav-link__index">I</span>
+            <span>The Genesis</span>
+          </a>
+          <a href="#chart" class="nav-link" data-section-link="chart" data-gated-nav>
+            <span class="nav-link__index">II</span>
+            <span>The Chart</span>
+          </a>
+          <a href="#forecast" class="nav-link" data-section-link="forecast" data-gated-nav>
+            <span class="nav-link__index">III</span>
+            <span>The Forecast</span>
+          </a>
+          <a href="#life-path" class="nav-link" data-section-link="life-path" data-gated-nav>
+            <span class="nav-link__index">IV</span>
+            <span>The Life Path</span>
+          </a>
+          <a href="#oracle" class="nav-link" data-section-link="oracle" data-gated-nav>
+            <span class="nav-link__index">V</span>
+            <span>The Oracle</span>
+          </a>
+          <a href="#sanctuary" class="nav-link" data-section-link="sanctuary" data-gated-nav>
+            <span class="nav-link__index">VI</span>
+            <span>The Sanctuary</span>
+          </a>
+        </nav>
+
+        <div class="sidebar__profile">
+          <div class="monogram" id="profile-monogram">AV</div>
+          <div>
+            <p class="sidebar__profile-name" id="sidebar-name">Aurelia Voss</p>
+            <p class="sidebar__profile-meta" id="sidebar-meta">Sun in Libra · Rising in Aquarius</p>
+          </div>
+        </div>
+      </aside>
+
+      <main class="content">
+        <section class="section section--genesis reveal" id="genesis" data-section="genesis">
+          <div class="section__header">
+            <p class="eyebrow">Section I</p>
+            <span class="section__rule"></span>
+            <p class="section__kicker">The threshold</p>
+          </div>
+
+          <div class="genesis-grid">
+            <div class="hero-block">
+              <p class="hero-block__meta">Instant psychological and predictive astrology</p>
+              <h2>
+                AI-driven <span>editorial astrology</span> rendered as a personal issue of record.
+              </h2>
+              <p class="hero-block__copy">
+                The Aspect transforms birth data into a magazine-grade report: precise, severe,
+                and intimate. Every transit reads like criticism. Every placement lands like a
+                profile.
+              </p>
+
+              <div class="stat-rail">
+                <article class="stat-card">
+                  <p class="stat-card__label">Output</p>
+                  <p class="stat-card__value">6 authored rooms</p>
+                </article>
+                <article class="stat-card">
+                  <p class="stat-card__label">Voice</p>
+                  <p class="stat-card__value">Playfair + Garamond</p>
+                </article>
+                <article class="stat-card">
+                  <p class="stat-card__label">Method</p>
+                  <p class="stat-card__value">Patterned AI synthesis</p>
+                </article>
+              </div>
+            </div>
+
+            <div class="panel panel--form">
+              <div class="panel__header">
+                <p class="eyebrow">The Genesis</p>
+                <h3>Enter your coordinates</h3>
+              </div>
+
+              <form id="profile-form" class="genesis-form">
+                <label>
+                  <span>Name</span>
+                  <input type="text" name="name" id="input-name" placeholder="Full Name" required />
+                </label>
+                <label>
+                  <span>Birthdate</span>
+                  <input type="text" name="birthdate" id="input-birthdate" placeholder="dd/mm/yyyy" inputmode="numeric" required />
+                </label>
+                <label>
+                  <span>Birth time</span>
+                  <input type="text" name="birthtime" id="input-birthtime" placeholder="00:00 am" required />
+                </label>
+                <label class="city-field">
+                  <span>City</span>
+                  <input type="text" name="city" id="input-city" placeholder="Birthplace." autocomplete="off" required />
+                  <div class="city-suggestions" id="city-suggestions" hidden></div>
+                  <p class="city-status" id="city-status">Loading searchable world city list...</p>
+                </label>
+                <button type="submit" class="button button--primary" id="generate-button">Generate my issue</button>
+                <p class="generation-status" id="generation-status">Waiting for profile and Gemini generation.</p>
+              </form>
+
+              <div class="issue-summary">
+                <p class="issue-summary__label">Current dossier</p>
+                <div class="issue-summary__row">
+                  <span id="summary-name">Full Name</span>
+                  <span id="summary-birth">dd/mm/yyyy · 00:00 am</span>
+                </div>
+                <p class="issue-summary__city" id="summary-city">Birthplace.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section section--chart reveal" id="chart" data-section="chart" data-gated-section>
+          <div class="chart-layout">
+            <div class="chart-visual panel">
+              <div class="chart-visual__header">
+                <p class="eyebrow">Natal mechanics</p>
+                <p class="chart-visual__coords" id="chart-coordinates">Jaipur, India · 06:42 IST</p>
+              </div>
+
+              <div class="kundli-frame">
+                <svg viewBox="0 0 600 600" class="kundli-svg" aria-label="Astrological chart">
+                  <rect x="70" y="70" width="460" height="460" class="kundli-outline"></rect>
+                  <line x1="70" y1="70" x2="530" y2="530" class="kundli-line"></line>
+                  <line x1="530" y1="70" x2="70" y2="530" class="kundli-line"></line>
+                  <line x1="300" y1="70" x2="300" y2="530" class="kundli-line"></line>
+                  <line x1="70" y1="300" x2="530" y2="300" class="kundli-line"></line>
+                  <polygon points="300,130 470,300 300,470 130,300" class="kundli-diamond"></polygon>
+                  <circle cx="300" cy="300" r="112" class="kundli-ring"></circle>
+                  <circle cx="300" cy="300" r="176" class="kundli-ring kundli-ring--soft"></circle>
+
+                  <text x="300" y="114" class="kundli-label" text-anchor="middle">ASC</text>
+                  <text x="486" y="305" class="kundli-label">VII</text>
+                  <text x="295" y="502" class="kundli-label" text-anchor="middle">MC</text>
+                  <text x="108" y="305" class="kundli-label">I</text>
+
+                  <circle cx="300" cy="164" r="7" class="kundli-point"></circle>
+                  <circle cx="422" cy="248" r="7" class="kundli-point kundli-point--muted"></circle>
+                  <circle cx="378" cy="412" r="7" class="kundli-point"></circle>
+                  <circle cx="204" cy="410" r="7" class="kundli-point kundli-point--muted"></circle>
+                  <circle cx="176" cy="246" r="7" class="kundli-point"></circle>
+
+                  <path d="M300 164 L422 248 L378 412 L204 410 L176 246 Z" class="kundli-path"></path>
+                </svg>
+              </div>
+
+              <div class="chart-visual__footer">
+                <div>
+                  <p class="micro-label">Dominant element</p>
+                  <p class="micro-value" id="dominant-element">Air</p>
+                </div>
+                <div>
+                  <p class="micro-label">Ruling quality</p>
+                  <p class="micro-value" id="dominant-modality">Cardinal</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="chart-copy">
+              <div class="section__header">
+                <p class="eyebrow">Section II</p>
+                <span class="section__rule"></span>
+                <p class="section__kicker">The natal issue</p>
+              </div>
+
+              <h2 class="display-title">Your celestial architecture</h2>
+              <p class="lede" id="chart-lede">
+                A precise reading of the soul’s blueprint, tuned to your Sun, Moon, and Rising.
+              </p>
+
+              <div class="placement-grid">
+                <article class="placement-card">
+                  <p class="placement-card__label">Sun</p>
+                  <h3 id="sun-sign">Libra</h3>
+                  <p id="sun-copy"></p>
+                </article>
+                <article class="placement-card">
+                  <p class="placement-card__label">Moon</p>
+                  <h3 id="moon-sign">Pisces</h3>
+                  <p id="moon-copy"></p>
+                </article>
+                <article class="placement-card">
+                  <p class="placement-card__label">Rising</p>
+                  <h3 id="rising-sign">Aquarius</h3>
+                  <p id="rising-copy"></p>
+                </article>
+              </div>
+
+              <article class="editorial-essay">
+                <p class="editorial-essay__label">Primary analysis</p>
+                <div id="chart-analysis"></div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section section--forecast reveal" id="forecast" data-section="forecast" data-gated-section>
+          <div class="section__header">
+            <p class="eyebrow">Section III</p>
+            <span class="section__rule"></span>
+            <p class="section__kicker">Time rendered as layout</p>
+          </div>
+
+          <div class="forecast-header">
+            <div>
+              <h2 class="display-title display-title--narrow">The Forecast</h2>
+              <p class="lede" id="forecast-lede">
+                Daily, weekly, and yearly spreads sharpen current transits into direct editorial
+                guidance.
+              </p>
+            </div>
+            <div class="segmented" role="tablist" aria-label="Forecast range">
+              <button class="segmented__button is-selected" data-forecast-range="daily" type="button">Daily</button>
+              <button class="segmented__button" data-forecast-range="weekly" type="button">Weekly</button>
+              <button class="segmented__button" data-forecast-range="yearly" type="button">Yearly</button>
+            </div>
+          </div>
+
+          <div class="forecast-grid">
+            <article class="panel forecast-copy">
+              <p class="forecast-copy__eyebrow" id="forecast-range-label">Daily transit</p>
+              <h3 id="forecast-headline"></h3>
+              <p id="forecast-body"></p>
+              <ul class="directive-list" id="forecast-directives"></ul>
+            </article>
+
+            <article class="panel intensity-panel">
+              <div class="intensity-panel__header">
+                <p class="eyebrow">Transit pressure curve</p>
+                <p class="intensity-panel__meta" id="intensity-meta">Window · 24 hours</p>
+              </div>
+              <div class="bars" id="forecast-bars" aria-hidden="true"></div>
+              <div class="bars__legend">
+                <span id="bars-start">00:00</span>
+                <span id="bars-peak">Peak</span>
+                <span id="bars-end">23:00</span>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="section section--life reveal" id="life-path" data-section="life-path" data-gated-section>
+          <div class="section__header">
+            <p class="eyebrow">Section IV</p>
+            <span class="section__rule"></span>
+            <p class="section__kicker">Career, family, romance</p>
+          </div>
+
+          <div class="life-intro">
+            <h2 class="display-title">The Life Path</h2>
+            <p class="lede" id="life-lede">
+              Dedicated assessments of ambition, intimacy, and the private architectures that hold
+              a life upright.
+            </p>
+          </div>
+
+          <div class="life-grid" id="life-grid"></div>
+        </section>
+
+        <section class="section section--oracle reveal" id="oracle" data-section="oracle" data-gated-section>
+          <div class="section__header">
+            <p class="eyebrow">Section V</p>
+            <span class="section__rule"></span>
+            <p class="section__kicker">Interrogate the chart</p>
+          </div>
+
+          <div class="oracle-grid">
+            <div class="oracle-intro">
+              <h2 class="display-title display-title--narrow">The Oracle</h2>
+              <p class="lede">
+                Ask specific questions and receive an immediate editorial answer tuned to your natal
+                patterning and the current transit climate.
+              </p>
+              <div class="quick-prompts">
+                <button type="button" class="quick-prompts__button" data-prompt="What is my strongest career opening this quarter?">
+                  Career opening
+                </button>
+                <button type="button" class="quick-prompts__button" data-prompt="How should I approach love this month?">
+                  Love this month
+                </button>
+                <button type="button" class="quick-prompts__button" data-prompt="What am I meant to release right now?">
+                  What to release
+                </button>
+              </div>
+            </div>
+
+            <div class="panel oracle-feed" id="oracle-feed" aria-live="polite"></div>
+          </div>
+
+          <form class="oracle-form panel" id="oracle-form">
+            <label class="oracle-form__label" for="oracle-input">Ask the stars...</label>
+            <div class="oracle-form__row">
+              <input
+                id="oracle-input"
+                name="oracle-input"
+                type="text"
+                placeholder="Will this season reward focus, reinvention, or retreat?"
+                required
+              />
+              <button type="submit" class="button button--primary" id="oracle-submit-button">Interrogate</button>
+            </div>
+            <p class="oracle-cooldown-status" id="oracle-cooldown-status">The Oracle unlocks shortly after issue generation.</p>
+          </form>
+        </section>
+
+        <section class="section section--sanctuary reveal" id="sanctuary" data-section="sanctuary" data-gated-section>
+          <div class="section__header">
+            <p class="eyebrow">Section VI</p>
+            <span class="section__rule"></span>
+            <p class="section__kicker">Reflection against movement</p>
+          </div>
+
+          <div class="sanctuary-grid">
+            <article class="panel sanctuary-journal">
+              <p class="eyebrow">Private journal</p>
+              <h2 class="display-title display-title--compact">The Sanctuary</h2>
+              <p class="lede lede--compact">
+                Record emotional weather, then watch it echo against your active transits.
+              </p>
+
+              <form id="journal-form" class="journal-form">
+                <label for="journal-entry">Reflection</label>
+                <textarea
+                  id="journal-entry"
+                  name="journal-entry"
+                  rows="6"
+                  placeholder="Today the chart felt less like prediction and more like permission..."
+                  required
+                ></textarea>
+                <button type="submit" class="button button--secondary">Archive reflection</button>
+              </form>
+            </article>
+
+            <article class="panel sanctuary-timeline">
+              <div class="sanctuary-timeline__header">
+                <p class="eyebrow">Transit mirror</p>
+                <p class="micro-value" id="sanctuary-theme">Theme · disciplined tenderness</p>
+              </div>
+              <div class="timeline-ribbon" id="timeline-ribbon"></div>
+              <div class="journal-entries" id="journal-entries"></div>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./script.js"></script>
+  </body>
+</html>

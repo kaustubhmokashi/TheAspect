@@ -1080,6 +1080,7 @@ async function downloadIssuePdf() {
   const originalLabel = elements.printButton.textContent;
   elements.printButton.disabled = true;
   elements.printButton.textContent = "Preparing PDF...";
+  cleanupPdfArtifacts();
 
   const exportRoot = document.createElement("div");
   exportRoot.className = "pdf-export";
@@ -1091,7 +1092,7 @@ async function downloadIssuePdf() {
       .set({
         margin: [10, 10, 14, 10],
         filename: buildPdfFilename(),
-        image: { type: "jpeg", quality: 0.96 },
+        image: { type: "png", quality: 1 },
         html2canvas: {
           scale: 2,
           useCORS: true,
@@ -1133,8 +1134,10 @@ async function downloadIssuePdf() {
     });
   } finally {
     exportRoot.remove();
+    cleanupPdfArtifacts();
     elements.printButton.disabled = false;
     elements.printButton.textContent = originalLabel;
+    syncOracleCooldown();
   }
 }
 
@@ -1196,6 +1199,20 @@ function triggerPdfDownload(blob, filename) {
   link.click();
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+}
+
+function cleanupPdfArtifacts() {
+  document.querySelectorAll(".html2pdf__container, .html2pdf__overlay, .html2canvas-container").forEach((node) => {
+    node.remove();
+  });
+
+  document.querySelectorAll("iframe").forEach((frame) => {
+    if (frame.classList.contains("html2pdf__overlay") || frame.classList.contains("html2canvas-container")) {
+      frame.remove();
+    }
+  });
+
+  document.body.style.removeProperty("overflow");
 }
 
 function buildPdfCover() {

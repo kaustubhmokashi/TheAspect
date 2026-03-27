@@ -1212,18 +1212,18 @@ async function downloadIssuePdf() {
     const pageHeight = pdf.internal.pageSize.getHeight();
     const imageWidth = pageWidth;
     const imageHeight = (canvas.height * imageWidth) / canvas.width;
-    const imageData = canvas.toDataURL("image/png");
+    const imageData = createPdfImageData(canvas);
 
     let remainingHeight = imageHeight;
     let offsetY = 0;
 
-    pdf.addImage(imageData, "PNG", 0, offsetY, imageWidth, imageHeight, undefined, "FAST");
+    pdf.addImage(imageData, "JPEG", 0, offsetY, imageWidth, imageHeight);
     remainingHeight -= pageHeight;
 
     while (remainingHeight > 0) {
       offsetY = remainingHeight - imageHeight;
       pdf.addPage();
-      pdf.addImage(imageData, "PNG", 0, offsetY, imageWidth, imageHeight, undefined, "FAST");
+      pdf.addImage(imageData, "JPEG", 0, offsetY, imageWidth, imageHeight);
       remainingHeight -= pageHeight;
     }
 
@@ -1330,6 +1330,28 @@ function cleanupPdfArtifacts() {
   });
 
   document.body.style.removeProperty("overflow");
+}
+
+function createPdfImageData(sourceCanvas) {
+  const flatCanvas = document.createElement("canvas");
+  flatCanvas.width = sourceCanvas.width;
+  flatCanvas.height = sourceCanvas.height;
+
+  const context = flatCanvas.getContext("2d");
+  if (!context) {
+    throw new Error("Unable to prepare the page capture.");
+  }
+
+  context.fillStyle = "#fffef9";
+  context.fillRect(0, 0, flatCanvas.width, flatCanvas.height);
+  context.drawImage(sourceCanvas, 0, 0);
+
+  const dataUrl = flatCanvas.toDataURL("image/jpeg", 0.92);
+  if (!dataUrl || dataUrl === "data:,") {
+    throw new Error("We couldn't convert the page into a downloadable image.");
+  }
+
+  return dataUrl;
 }
 
 function buildPdfCover() {

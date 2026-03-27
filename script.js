@@ -209,15 +209,6 @@ const forecastSets = {
   },
 };
 
-const sanctuaryThemes = [
-  "disciplined tenderness",
-  "measured reinvention",
-  "devotion under revision",
-  "precision after release",
-  "audacity with structure",
-  "quiet emotional clarity",
-];
-
 const tonalLexicon = {
   Fire: {
     nouns: ["combustion", "authorship", "appetite", "velocity", "declaration"],
@@ -241,7 +232,7 @@ const tonalLexicon = {
     nouns: ["depth", "atmosphere", "memory", "devotion", "tide"],
     virtues: ["intuition", "sensitivity", "bonding", "inner truth"],
     shadows: ["avoidance", "fusion", "mood saturation", "private fear"],
-    settings: ["the inner chamber", "the tide room", "the hidden archive", "the sanctuary"],
+    settings: ["the inner chamber", "the tide room", "the hidden archive", "the quiet room"],
   },
 };
 
@@ -252,7 +243,6 @@ const defaultState = {
   city: "",
   generatedIssue: null,
   oracleHistory: [],
-  journalEntries: [],
 };
 
 const state = loadState();
@@ -313,11 +303,6 @@ const elements = {
   oracleInput: document.getElementById("oracle-input"),
   oracleSubmitButton: document.getElementById("oracle-submit-button"),
   oracleCooldownStatus: document.getElementById("oracle-cooldown-status"),
-  journalForm: document.getElementById("journal-form"),
-  journalEntry: document.getElementById("journal-entry"),
-  journalEntries: document.getElementById("journal-entries"),
-  sanctuaryTheme: document.getElementById("sanctuary-theme"),
-  timelineRibbon: document.getElementById("timeline-ribbon"),
 };
 
 let currentForecastRange = "daily";
@@ -351,9 +336,6 @@ function loadState() {
       oracleHistory: Array.isArray(parsed.oracleHistory) && parsed.oracleHistory.length
         ? parsed.oracleHistory
         : structuredClone(defaultState.oracleHistory),
-      journalEntries: Array.isArray(parsed.journalEntries) && parsed.journalEntries.length
-        ? parsed.journalEntries
-        : structuredClone(defaultState.journalEntries),
     };
   } catch (_error) {
     return structuredClone(defaultState);
@@ -532,7 +514,7 @@ function syncOracleCooldown() {
   if (!generationUnlocked || !state.generatedIssue) {
     elements.oracleInput.disabled = true;
     elements.oracleSubmitButton.disabled = true;
-    elements.oracleSubmitButton.textContent = "Interrogate";
+    elements.oracleSubmitButton.textContent = "Ask the Oracle";
     elements.oracleCooldownStatus.dataset.state = "cooldown";
     elements.oracleCooldownStatus.textContent = "Reveal your horoscope first to open The Oracle.";
     return;
@@ -551,7 +533,7 @@ function syncOracleCooldown() {
 
   elements.oracleInput.disabled = false;
   elements.oracleSubmitButton.disabled = false;
-  elements.oracleSubmitButton.textContent = "Interrogate";
+  elements.oracleSubmitButton.textContent = "Ask the Oracle";
   elements.oracleCooldownStatus.dataset.state = "ready";
   elements.oracleCooldownStatus.textContent = "The Oracle is ready for one question.";
 }
@@ -586,7 +568,6 @@ function setupEvents() {
     if (previousSignature !== nextSignature) {
       state.generatedIssue = null;
       state.oracleHistory = [];
-      state.journalEntries = [];
     }
 
     const profile = buildProfile(state);
@@ -598,7 +579,6 @@ function setupEvents() {
     try {
       state.generatedIssue = await generateIssueWithAI(profile);
       state.oracleHistory = [];
-      state.journalEntries = [];
       generationUnlocked = true;
       startOracleCooldown(ORACLE_COOLDOWN_MS);
       syncGenerationGate();
@@ -610,7 +590,7 @@ function setupEvents() {
         pulse: "Ready to explore",
         stage: "Your reading is here",
         status: "Your horoscope is ready.",
-        detail: "You can now explore your chart, forecast, life themes, oracle, and journal below.",
+        detail: "You can now explore your chart, forecast, life themes, and the Oracle below.",
         progress: 100,
       });
     } catch (error) {
@@ -728,23 +708,6 @@ function setupEvents() {
     }
   });
 
-  elements.journalForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-
-    const body = elements.journalEntry.value.trim();
-    if (!body) {
-      return;
-    }
-
-    state.journalEntries.unshift({
-      date: formatJournalDate(new Date()),
-      body,
-    });
-    state.journalEntries = state.journalEntries.slice(0, 6);
-    elements.journalEntry.value = "";
-    saveState();
-    renderSanctuary(buildProfile(state));
-  });
 }
 
 function setupObservers() {
@@ -794,7 +757,6 @@ function renderApp() {
   renderForecast(profile);
   renderLifePath(profile);
   renderOracle();
-  renderSanctuary(profile);
   syncOracleCooldown();
 }
 
@@ -881,7 +843,7 @@ function renderLifePath(profile) {
       <article class="life-card">
         <p class="life-card__eyebrow">Module 01</p>
         <h3>Life Path Pending</h3>
-        <p>Run generation from The Genesis to replace this placeholder with editorial assessments.</p>
+        <p>Show your horoscope to replace this placeholder with editorial assessments.</p>
       </article>
     `;
 }
@@ -903,42 +865,14 @@ function renderOracle() {
   elements.oracleFeed.innerHTML = history
     .map(
       (item, index) => `
-        <article class="oracle-card">
-          <p class="oracle-card__meta">Query ${String(index + 1).padStart(2, "0")} · Editorial answer</p>
+        <article class="oracle-card ${index === 0 ? "oracle-card--featured" : ""}">
+          <p class="oracle-card__meta">${index === 0 ? "Latest answer" : `Earlier reading ${String(index + 1).padStart(2, "0")}`}</p>
           <h3 class="oracle-card__question">"${escapeHtml(item.question)}"</h3>
           <p class="oracle-card__answer">${escapeHtml(item.answer)}</p>
         </article>
       `
     )
     .join("");
-}
-
-function renderSanctuary(profile) {
-  const sanctuary = getVisibleIssue()?.sanctuary;
-  const theme = sanctuary?.theme || "awaiting generated transit theme";
-  elements.sanctuaryTheme.textContent = `Theme · ${theme}`;
-
-  elements.timelineRibbon.innerHTML = ["Wake", "Observe", "Edit", "Speak", "Withdraw", "Archive"]
-    .map((label, index) => `<span>${label} / ${index + 1}</span>`)
-    .join("");
-
-  const entries = state.journalEntries.length ? state.journalEntries : sanctuary?.starters || [];
-
-  elements.journalEntries.innerHTML = entries
-    .map(
-      (entry) => `
-        <article class="journal-card">
-          <p class="journal-card__meta">${escapeHtml(entry.date || entry.dateLabel)} · ${profile.sun} / ${profile.moon}</p>
-          <p class="journal-card__body">${escapeHtml(entry.body)}</p>
-        </article>
-      `
-    )
-    .join("") || `
-      <article class="journal-card">
-        <p class="journal-card__meta">Sanctuary pending</p>
-        <p class="journal-card__body">Reveal your horoscope to receive a theme and two opening reflections.</p>
-      </article>
-    `;
 }
 
 function buildProfile(source) {
@@ -1081,7 +1015,7 @@ function buildPdfCover() {
     <p class="pdf-cover__eyebrow">The Aspect</p>
     <h1 class="pdf-cover__title">${escapeHtml(profile.name)}</h1>
     <p class="pdf-cover__meta">${escapeHtml(state.birthdate)} · ${escapeHtml(state.birthtime)} · ${escapeHtml(profile.city)}</p>
-    <p class="pdf-cover__summary">A personal horoscope with chart, forecast, life themes, oracle, and journal prompts.</p>
+    <p class="pdf-cover__summary">A personal horoscope with chart, forecast, life themes, and oracle guidance.</p>
   `;
   return cover;
 }
@@ -1116,150 +1050,6 @@ async function postJson(url, body) {
   }
 
   return payload.data;
-}
-
-function buildOracleAnswer(question, profile) {
-  const prompt = question.toLowerCase();
-  const answers = [];
-  const lexicon = tonalLexicon[profile.element];
-  const activeVirtue = pick(lexicon.virtues, profile.hash);
-  const activeShadow = pick(lexicon.shadows, profile.hash + 1);
-  const activeSetting = pick(lexicon.settings, profile.hash + 2);
-
-  if (prompt.includes("career") || prompt.includes("work") || prompt.includes("job")) {
-    answers.push(
-      `Professionally, the chart wants architecture before expansion. Your ${profile.sun} Sun can attract the room, but your ${profile.modality.toLowerCase()} pattern only becomes profitable once your systems can hold the attention you earn. This season rewards ${activeVirtue} more than raw activity.`
-    );
-  }
-
-  if (prompt.includes("love") || prompt.includes("relationship") || prompt.includes("partner")) {
-    answers.push(
-      `In love, your ${profile.moon} Moon is asking for emotional specificity, not vague chemistry. The next opening appears when affection becomes legible through behavior, schedule, and tone. Romance improves when you stop hiding tenderness behind ${activeShadow}.`
-    );
-  }
-
-  if (prompt.includes("release") || prompt.includes("let go") || prompt.includes("leave")) {
-    answers.push(
-      `What needs release is whatever makes your life look more agreeable than true. The ${profile.rising} Rising prefers a cleaner front elevation, and that now means removing ornamental obligations. Leave behind anything built only for optics inside ${activeSetting}.`
-    );
-  }
-
-  if (answers.length === 0) {
-    answers.push(
-      `The Oracle reads this as a question about timing. Your ${profile.element.toLowerCase()} chart is strongest when you stop splitting instinct from structure. Move toward what feels exact, not merely impressive, and let ${activeVirtue} set the tempo.`
-    );
-  }
-
-  answers.push(
-    `For this phase, trust ${profile.compatibility.toLowerCase()} energies: they help your ${profile.element.toLowerCase()} nature stay coherent while the forecast remains active.`
-  );
-
-  return answers.join(" ");
-}
-
-function buildWelcomeOracleAnswer(profile) {
-  const report = buildReport(profile);
-  return `The issue opens with ${report.sanctuary.theme}. ${report.chart.paragraphs[0]} ${report.forecast.daily.directives[0]}`;
-}
-
-function buildReport(profile) {
-  const lexicon = tonalLexicon[profile.element];
-  const nounA = pick(lexicon.nouns, profile.hash);
-  const nounB = pick(lexicon.nouns, profile.hash + 4);
-  const virtue = pick(lexicon.virtues, profile.hash + 1);
-  const shadow = pick(lexicon.shadows, profile.hash + 2);
-  const setting = pick(lexicon.settings, profile.hash + 3);
-  const phase = getDayPhase(profile.birthHour);
-  const yearlyPulse = getYearPulse(profile.birthMonth);
-  const dateCode = `${String(profile.birthDay).padStart(2, "0")}.${String(profile.birthMonth).padStart(2, "0")}.${profile.birthYear}`;
-
-  return {
-    chart: {
-      lede: `${profile.name}'s chart reads like ${virtue} drafted inside ${setting}: ${profile.element.toLowerCase()} intelligence, ${profile.modality.toLowerCase()} pacing, and a life that becomes clearer when it stops performing neutrality.`,
-      paragraphs: [
-        `${profile.name} enters the chart through ${profile.sun}, which means the self is organized around ${nounA}, taste, and a need for an authored point of view. The Moon in ${profile.moon} complicates that elegance with an inner climate that wants privacy, atmosphere, and emotional truth before consensus. Born at ${profile.birthtime} in ${profile.cityToken}, the issue begins in ${phase}, which gives the psyche a first instinct toward ${virtue} rather than spectacle.`,
-        `The Rising sign in ${profile.rising} becomes the façade: the angle from which the world first reads the work. Others meet ${profile.voice}, but beneath that presentation sits a stricter private requirement. Your chart keeps asking whether your outer architecture truly reflects the interior material, or whether some part of life is still over-edited for approval.`,
-        `${modalityNotes[profile.modality]} That gift becomes especially powerful when it is not hijacked by ${shadow}. In practice, the chart wants fewer ornamental obligations and more devotion to the structures that feel inevitable when you are alone with your own standards.`,
-      ],
-    },
-    forecast: {
-      daily: {
-        headline: `${profile.sun} authorship under ${profile.moon.toLowerCase()} weather.`,
-        body: `The daily spread is keyed to ${phase}. For the next cycle, your ${profile.rising} Rising is best used as an editor rather than a broadcaster: cut noise, preserve nerve, and let ${virtue} decide what enters the frame. The real risk today is ${shadow}, especially when the schedule grows louder than the signal.`,
-        directives: [
-          `Spend one protected hour working inside ${setting} without interruption or explanation.`,
-          `Replace one performative commitment with a cleaner act of ${virtue}.`,
-          `Notice where ${nounB} can be simplified before nightfall.`,
-        ],
-      },
-      weekly: {
-        headline: `A seven-day architecture for ${profile.element.toLowerCase()} consequence.`,
-        body: `This week favors sequencing over force. Early movement belongs to ${nounA}; the midpoint belongs to conversation and correction; the latter half belongs to consolidation. Because your chart is ${profile.modality.toLowerCase()}, the quality of this week improves the moment you stop trying to do everything at one emotional volume.`,
-        directives: [
-          `Front-load the week with one visible act of authorship.`,
-          `Midweek, repair a relationship through precision rather than reassurance.`,
-          `End the week by auditing where ${shadow} has been disguised as responsibility.`,
-        ],
-      },
-      yearly: {
-        headline: `${yearlyPulse} belongs to your ${profile.modality.toLowerCase()} design.`,
-        body: `The yearly spread treats ${dateCode} as a structural marker, not a nostalgic one. The long arc ahead trains ${profile.name} toward larger consequence through ${virtue}, cleaner boundaries, and a more selective relationship to attention. If there is a defining lesson, it is this: stop building for ambient approval and start building for longevity.`,
-        directives: [
-          `Choose one discipline that can outlast mood and trend.`,
-          `Make room for a visible chapter shift near ${profile.peakYear}.`,
-          `Treat every major decision as an editorial placement, not a random event.`,
-        ],
-      },
-    },
-    life: {
-      lede: `${profile.name}'s life path is generated from ${profile.element.toLowerCase()} fluency, ${profile.modality.toLowerCase()} behavior, and a natal preference for ${virtue} over improvisational chaos.`,
-      cards: [
-        {
-          title: "Profession",
-          eyebrow: "Module 01",
-          body: `${lifeThemes[profile.element].career} In your case, career becomes most magnetic when ${nounA} is treated as a discipline rather than a mood.`,
-          list: [
-            `Your strongest work appears when ${profile.sun} confidence is paired with ${profile.modality.toLowerCase()} discipline.`,
-            `Use your ${profile.rising} presentation style as a professional differentiator, not just a personality trait.`,
-            `Peak expansion window: ${profile.peakYear}.`,
-          ],
-        },
-        {
-          title: "Family",
-          eyebrow: "Module 02",
-          body: `${lifeThemes[profile.element].family} The private system stabilizes when ${profile.moon} needs are named before they become weather.`,
-          list: [
-            `Restore connection by speaking to emotional reality before practical repair.`,
-            `Guard against ${shadow} showing up as silence or over-functioning.`,
-            `Home becomes more beautiful when it mirrors ${setting} rather than social expectation.`,
-          ],
-        },
-        {
-          title: "Romance",
-          eyebrow: "Module 03",
-          body: `${lifeThemes[profile.element].love} For you, intimacy works best when admiration and emotional evidence arrive together.`,
-          list: [
-            `Your chart does not reward lukewarm attachment; it rewards coherence.`,
-            `Attraction intensifies when tenderness survives schedule, stress, and scrutiny.`,
-            `Current compatibility atmosphere: ${profile.compatibility}.`,
-          ],
-        },
-      ],
-    },
-    sanctuary: {
-      theme: sanctuaryThemes[profile.hash % sanctuaryThemes.length],
-      starters: [
-        {
-          date: "Issue opening",
-          body: `${profile.name} begins with a question about ${nounA}: what happens when ${virtue} is treated as the actual center of life rather than a private ideal?`,
-        },
-        {
-          date: "Transit note",
-          body: `The chart keeps returning to ${shadow}. I can feel how much cleaner the week becomes when I refuse to decorate what should simply be true.`,
-        },
-      ],
-    },
-  };
 }
 
 function getSunSign(dateString) {
@@ -1409,15 +1199,6 @@ function isBirthdateValid(value) {
 
 function isBirthtimeValid(value) {
   return Boolean(parseBirthtimeInput(value));
-}
-
-function formatJournalDate(date) {
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
 }
 
 function escapeHtml(value) {

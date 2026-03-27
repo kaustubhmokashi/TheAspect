@@ -111,8 +111,6 @@ svg {
 .button,
 .quick-prompts__button,
 .oracle-form__label,
-.journal-form label,
-.timeline-ribbon,
 .life-card__eyebrow {
   font-family: var(--font-ui);
   letter-spacing: 0.16em;
@@ -268,8 +266,7 @@ body.is-locked [data-gated-nav] {
 .placement-card p,
 .editorial-essay p,
 .life-card p,
-.oracle-card__answer,
-.journal-card__body {
+.oracle-card__answer {
   color: var(--color-ink-soft);
 }
 
@@ -288,7 +285,6 @@ body.is-locked [data-gated-nav] {
 
 .genesis-grid,
 .forecast-grid,
-.sanctuary-grid,
 .oracle-grid {
   display: grid;
   gap: clamp(1.5rem, 2.5vw, 2.5rem);
@@ -333,7 +329,6 @@ body.is-locked [data-gated-nav] {
 
 .genesis-form,
 .directive-list,
-.journal-form,
 .life-grid {
   position: relative;
   z-index: 1;
@@ -344,8 +339,7 @@ body.is-locked [data-gated-nav] {
   gap: 1.35rem;
 }
 
-.genesis-form label,
-.journal-form {
+.genesis-form label {
   display: grid;
   gap: 0.45rem;
 }
@@ -354,8 +348,7 @@ body.is-locked [data-gated-nav] {
   position: relative;
 }
 
-.genesis-form span,
-.journal-form label {
+.genesis-form span {
   font-family: var(--font-ui);
   font-size: 0.64rem;
   letter-spacing: 0.14em;
@@ -588,8 +581,7 @@ textarea {
 .chart-visual__footer,
 .forecast-header,
 .bars__legend,
-.oracle-form__row,
-.sanctuary-timeline__header {
+.oracle-form__row {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -955,8 +947,24 @@ textarea {
 }
 
 .oracle-grid {
-  grid-template-columns: minmax(16rem, 0.45fr) minmax(0, 1fr);
+  grid-template-columns: minmax(18rem, 0.42fr) minmax(0, 1fr);
   align-items: start;
+}
+
+.oracle-stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.oracle-intro__note {
+  max-width: 24rem;
+  margin-top: 1.5rem;
+  padding: 1rem 1.05rem;
+  border-left: 1px solid var(--color-line-strong);
+  background: rgba(255, 255, 255, 0.42);
+  font-size: 1.05rem;
+  line-height: 1.45;
+  color: var(--color-ink-soft);
 }
 
 .quick-prompts {
@@ -965,31 +973,58 @@ textarea {
 
 .quick-prompts__button {
   border: 1px solid var(--color-line);
-  background: rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.7);
   padding: 0.9rem 1rem;
   text-align: left;
   cursor: pointer;
   font-size: 0.6rem;
+  transition: transform 220ms ease, border-color 220ms ease, background 220ms ease;
 }
 
 .quick-prompts__button:hover {
   border-color: var(--color-line-strong);
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-1px);
+}
+
+.oracle-feed-panel {
+  padding-top: 1.2rem;
+}
+
+.oracle-feed-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.9rem;
+}
+
+.oracle-feed-panel__meta {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 0.54rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--color-muted);
 }
 
 .oracle-feed {
   display: grid;
-  gap: 1rem;
+  gap: 0.9rem;
   min-height: 24rem;
 }
 
 .oracle-card {
   position: relative;
-  padding: 1.2rem 1.25rem;
-  border-top: 1px solid var(--color-line);
+  padding: 1.2rem 1.25rem 1.3rem;
+  border: 1px solid var(--color-line);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(244, 239, 228, 0.52)),
+    var(--color-paper);
 }
 
 .oracle-card:first-child {
-  border-top: 0;
+  border-color: var(--color-line-strong);
 }
 
 .oracle-card__meta {
@@ -1004,8 +1039,8 @@ textarea {
 .oracle-card__question {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 2rem;
-  line-height: 1;
+  font-size: clamp(1.7rem, 2.8vw, 2.25rem);
+  line-height: 1.02;
   letter-spacing: -0.04em;
 }
 
@@ -1016,13 +1051,28 @@ textarea {
 }
 
 .oracle-form {
-  margin-top: 1.5rem;
+  margin-top: 0;
+  padding-top: 1.2rem;
+  position: sticky;
+  top: 2rem;
 }
 
 .oracle-form__label {
   display: block;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.35rem;
   font-size: 0.6rem;
+  color: var(--color-muted);
+}
+
+.oracle-form__header {
+  margin-bottom: 1rem;
+}
+
+.oracle-form__hint {
+  margin: 0;
+  max-width: 26rem;
+  font-size: 0.98rem;
+  line-height: 1.45;
   color: var(--color-muted);
 }
 
@@ -1053,63 +1103,15 @@ textarea {
   flex: 1 1 auto;
 }
 
-.sanctuary-grid {
-  grid-template-columns: minmax(18rem, 0.55fr) minmax(0, 1fr);
+.oracle-card--featured {
+  border-color: var(--color-primary);
+  background:
+    linear-gradient(180deg, rgba(244, 239, 228, 0.88), rgba(255, 255, 255, 0.96)),
+    var(--color-paper);
 }
 
-.lede--compact {
-  margin-top: 1rem;
-  font-size: 1.15rem;
-  max-width: 28rem;
-}
-
-.journal-form {
-  margin-top: 2rem;
-}
-
-.sanctuary-timeline {
-  display: grid;
-  gap: 1.25rem;
-}
-
-.timeline-ribbon {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 0.5rem;
-}
-
-.timeline-ribbon span {
-  padding: 1rem 0.75rem;
-  border-top: 1px solid var(--color-line-strong);
-  background: linear-gradient(180deg, rgba(15, 15, 15, 0.06), rgba(15, 15, 15, 0));
-  font-size: 0.56rem;
-  color: var(--color-muted);
-}
-
-.journal-entries {
-  display: grid;
-  gap: 0.8rem;
-}
-
-.journal-card {
-  padding: 1rem 1rem 1.1rem;
-  border: 1px solid var(--color-line);
-  background: rgba(255, 255, 255, 0.68);
-}
-
-.journal-card__meta {
-  margin: 0 0 0.55rem;
-  font-family: var(--font-ui);
-  font-size: 0.55rem;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  color: var(--color-muted);
-}
-
-.journal-card__body {
-  margin: 0;
-  font-size: 1.08rem;
-  line-height: 1.45;
+.oracle-card--featured .oracle-card__meta {
+  color: var(--color-primary);
 }
 
 .pdf-export {
@@ -1217,8 +1219,7 @@ body.is-locked [data-gated-section] {
   .chart-layout,
   .forecast-grid,
   .life-grid,
-  .oracle-grid,
-  .sanctuary-grid {
+  .oracle-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1306,12 +1307,16 @@ body.is-locked [data-gated-section] {
   .forecast-header,
   .issue-summary__row,
   .chart-visual__footer,
-  .sanctuary-timeline__header,
   .oracle-form__row,
   .generation-console__header,
   .generation-console__body {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .oracle-form {
+    position: relative;
+    top: 0;
   }
 
   .sidebar__profile {
@@ -1377,7 +1382,6 @@ body.is-locked [data-gated-section] {
   .button,
   .quick-prompts,
   .oracle-form,
-  .journal-form,
   .segmented,
   .generation-status {
     display: none !important;
@@ -1395,7 +1399,6 @@ body.is-locked [data-gated-section] {
 
   .panel,
   .life-card,
-  .journal-card,
   .placement-card {
     border: 1px solid #cccccc;
     background: #ffffff;

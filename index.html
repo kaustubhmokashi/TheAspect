@@ -47,10 +47,6 @@
             <span class="nav-link__index">V</span>
             <span>The Oracle</span>
           </a>
-          <a href="#sanctuary" class="nav-link" data-section-link="sanctuary" data-gated-nav>
-            <span class="nav-link__index">VI</span>
-            <span>The Sanctuary</span>
-          </a>
         </nav>
 
         <div class="sidebar__profile">
@@ -307,7 +303,7 @@
           <div class="section__header">
             <p class="eyebrow">Section V</p>
             <span class="section__rule"></span>
-            <p class="section__kicker">Interrogate the chart</p>
+            <p class="section__kicker">Personal questions, clear answers</p>
           </div>
 
           <div class="oracle-grid">
@@ -317,6 +313,10 @@
                 Ask specific questions and receive an immediate editorial answer tuned to your natal
                 patterning and the current transit climate.
               </p>
+              <div class="oracle-intro__note">
+                A good oracle question is narrow, personal, and rooted in a real decision you are
+                facing right now.
+              </div>
               <div class="quick-prompts">
                 <button type="button" class="quick-prompts__button" data-prompt="What is my strongest career opening this quarter?">
                   Career opening
@@ -330,61 +330,33 @@
               </div>
             </div>
 
-            <div class="panel oracle-feed" id="oracle-feed" aria-live="polite"></div>
-          </div>
-
-          <form class="oracle-form panel" id="oracle-form">
-            <label class="oracle-form__label" for="oracle-input">Ask the stars...</label>
-            <div class="oracle-form__row">
-              <input
-                id="oracle-input"
-                name="oracle-input"
-                type="text"
-                placeholder="Will this season reward focus, reinvention, or retreat?"
-                required
-              />
-              <button type="submit" class="button button--primary" id="oracle-submit-button">Interrogate</button>
-            </div>
-            <p class="oracle-cooldown-status" id="oracle-cooldown-status">The Oracle unlocks shortly after issue generation.</p>
-          </form>
-        </section>
-
-        <section class="section section--sanctuary reveal" id="sanctuary" data-section="sanctuary" data-gated-section>
-          <div class="section__header">
-            <p class="eyebrow">Section VI</p>
-            <span class="section__rule"></span>
-            <p class="section__kicker">Reflection against movement</p>
-          </div>
-
-          <div class="sanctuary-grid">
-            <article class="panel sanctuary-journal">
-              <p class="eyebrow">Private journal</p>
-              <h2 class="display-title display-title--compact">The Sanctuary</h2>
-              <p class="lede lede--compact">
-                Record emotional weather, then watch it echo against your active transits.
-              </p>
-
-              <form id="journal-form" class="journal-form">
-                <label for="journal-entry">Reflection</label>
-                <textarea
-                  id="journal-entry"
-                  name="journal-entry"
-                  rows="6"
-                  placeholder="Today the chart felt less like prediction and more like permission..."
-                  required
-                ></textarea>
-                <button type="submit" class="button button--secondary">Archive reflection</button>
+            <div class="oracle-stack">
+              <form class="oracle-form panel" id="oracle-form">
+                <div class="oracle-form__header">
+                  <label class="oracle-form__label" for="oracle-input">Ask the stars...</label>
+                  <p class="oracle-form__hint">Keep it specific. The more precise the question, the sharper the answer.</p>
+                </div>
+                <div class="oracle-form__row">
+                  <input
+                    id="oracle-input"
+                    name="oracle-input"
+                    type="text"
+                    placeholder="Should I commit to one path or leave more room this season?"
+                    required
+                  />
+                  <button type="submit" class="button button--primary" id="oracle-submit-button">Ask the Oracle</button>
+                </div>
+                <p class="oracle-cooldown-status" id="oracle-cooldown-status">The Oracle unlocks shortly after issue generation.</p>
               </form>
-            </article>
 
-            <article class="panel sanctuary-timeline">
-              <div class="sanctuary-timeline__header">
-                <p class="eyebrow">Transit mirror</p>
-                <p class="micro-value" id="sanctuary-theme">Theme · disciplined tenderness</p>
+              <div class="panel oracle-feed-panel">
+                <div class="oracle-feed-panel__header">
+                  <p class="eyebrow">Current answers</p>
+                  <p class="oracle-feed-panel__meta">Saved in this session</p>
+                </div>
+                <div class="oracle-feed" id="oracle-feed" aria-live="polite"></div>
               </div>
-              <div class="timeline-ribbon" id="timeline-ribbon"></div>
-              <div class="journal-entries" id="journal-entries"></div>
-            </article>
+            </div>
           </div>
         </section>
       </main>

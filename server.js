@@ -98,26 +98,6 @@ const issueSchema = {
       },
       required: ["lede", "cards"],
     },
-    sanctuary: {
-      type: "object",
-      properties: {
-        theme: { type: "string" },
-        starters: {
-          type: "array",
-          minItems: 2,
-          maxItems: 2,
-          items: {
-            type: "object",
-            properties: {
-              dateLabel: { type: "string" },
-              body: { type: "string" },
-            },
-            required: ["dateLabel", "body"],
-          },
-        },
-      },
-      required: ["theme", "starters"],
-    },
     oracleWelcome: {
       type: "object",
       properties: {
@@ -127,7 +107,7 @@ const issueSchema = {
       required: ["question", "answer"],
     },
   },
-  required: ["chart", "forecast", "life", "sanctuary", "oracleWelcome"],
+  required: ["chart", "forecast", "life", "oracleWelcome"],
 };
 
 const oracleAnswerSchema = {
@@ -557,7 +537,6 @@ Requirements:
 - chart: one lede and exactly three paragraphs
 - forecast: daily, weekly, yearly; each needs a headline, one body paragraph, and exactly three directives
 - life: one lede and exactly three cards titled Profession, Family, and Romance
-- sanctuary: one short transit theme phrase and exactly two starter journal entries
 - oracleWelcome: one question and one answer
 
 Writing direction:

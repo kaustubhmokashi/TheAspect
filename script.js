@@ -267,6 +267,7 @@ const elements = {
   generationPulse: document.getElementById("generation-pulse"),
   generationStage: document.getElementById("generation-stage"),
   generationDetail: document.getElementById("generation-detail"),
+  generationTrace: document.getElementById("generation-trace"),
   generationMeterFill: document.getElementById("generation-meter-fill"),
   generationStatus: document.getElementById("generation-status"),
   sidebarName: document.getElementById("sidebar-name"),
@@ -363,6 +364,7 @@ function hydrateForm() {
     status: "Nothing appears until you choose to reveal your horoscope.",
     detail: "Once you're ready, we'll turn your birth details into a full reading.",
     progress: 0,
+    trace: "",
   });
   syncOracleCooldown();
 }
@@ -393,12 +395,17 @@ function toFriendlyReadingError(message) {
   return "We couldn't prepare your reading just yet. Please try again in a little while.";
 }
 
-function setGenerationFeedback({ stateName, pulse, stage, status, detail, progress }) {
+function setGenerationFeedback({ stateName, pulse, stage, status, detail, progress, trace = "" }) {
   elements.generationConsole.dataset.state = stateName;
   elements.generationPulse.textContent = pulse;
   elements.generationStage.textContent = stage;
   elements.generationDetail.textContent = detail;
   elements.generationMeterFill.style.width = `${Math.max(0, Math.min(100, progress))}%`;
+  if (elements.generationTrace) {
+    const normalizedTrace = trace.trim();
+    elements.generationTrace.textContent = normalizedTrace ? `Details: ${normalizedTrace}` : "";
+    elements.generationTrace.hidden = !normalizedTrace;
+  }
   setGenerationStatus(status, stateName);
 }
 
@@ -418,6 +425,7 @@ function startGenerationExperience() {
       status: "Your reading is taking a little longer than usual.",
       detail: "Stay on this page and we'll keep working in the background.",
       progress: 96,
+      trace: "",
     });
   }, GENERATION_STALL_MS);
   generationRouteSwapTimer = window.setTimeout(() => {
@@ -428,6 +436,7 @@ function startGenerationExperience() {
       status: "We're taking a different route to finish your reading.",
       detail: "Sometimes one path gets crowded. We're still working to bring your horoscope through.",
       progress: 97,
+      trace: "",
     });
   }, GENERATION_ROUTE_SWAP_MS);
   generationPersistTimer = window.setTimeout(() => {
@@ -438,6 +447,7 @@ function startGenerationExperience() {
       status: "We're still working on your reading.",
       detail: "Thank you for staying with us. We're continuing to try different ways to complete it.",
       progress: 98,
+      trace: "",
     });
   }, GENERATION_PERSIST_MS);
 }
@@ -473,6 +483,7 @@ function renderGenerationStage() {
     status: "Your horoscope is on its way.",
     detail: activeStage.detail,
     progress: activeStage.progress,
+    trace: "",
   });
 }
 
@@ -596,6 +607,7 @@ function setupEvents() {
         status: "Your horoscope is ready.",
         detail: "You can now explore your chart, forecast, life themes, and the Oracle below.",
         progress: 100,
+        trace: "",
       });
     } catch (error) {
       stopGenerationExperience();
@@ -606,6 +618,7 @@ function setupEvents() {
         status: toFriendlyReadingError(error.message),
         detail: "Nothing below has been revealed yet. Please try again in a little while.",
         progress: 100,
+        trace: error.message || "",
       });
     } finally {
       syncGenerationGate();
@@ -1037,6 +1050,7 @@ async function downloadIssuePdf() {
       status: "Reveal your horoscope first.",
       detail: "Once your reading is on the page, you can download it as a PDF in one step.",
       progress: 0,
+      trace: "",
     });
     return;
   }
@@ -1050,6 +1064,7 @@ async function downloadIssuePdf() {
       status: "We couldn't prepare the PDF export just now.",
       detail: "Please refresh the page and try again.",
       progress: 100,
+      trace: "PDF library unavailable",
     });
     return;
   }
@@ -1096,6 +1111,7 @@ async function downloadIssuePdf() {
       status: "Your horoscope has been downloaded.",
       detail: "You can keep exploring here or save the file for later.",
       progress: 100,
+      trace: "",
     });
   } catch (error) {
     console.error("[pdf] Export failed:", error);
@@ -1106,6 +1122,7 @@ async function downloadIssuePdf() {
       status: "We couldn't create the PDF just now.",
       detail: "Please try again in a moment.",
       progress: 100,
+      trace: error?.message || "Unknown PDF export error",
     });
   } finally {
     exportRoot.remove();

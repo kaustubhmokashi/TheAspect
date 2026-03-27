@@ -3,8 +3,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const PORT = Number(process.env.PORT || 3000);
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "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";
-const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "stepfun/step-3.5-flash:free";
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "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";
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "google/gemma-3-27b-it:free";
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const ROOT = __dirname;
 
@@ -149,6 +149,7 @@ http
 
       return sendJson(res, 405, { error: "Method not allowed" });
     } catch (error) {
+      console.error("[server] Unhandled request error:", error);
       return sendJson(res, 500, { error: error.message || "Internal server error" });
     }
   })
@@ -170,6 +171,11 @@ async function handleGenerateIssue(req, res) {
     const data = await askOpenRouterJSON(buildIssuePrompt(body.profile), issueSchema, 3200, "editorial_issue");
     return sendJson(res, 200, { data });
   } catch (error) {
+    console.error("[api/generate-issue] Request failed:", {
+      statusCode: error.statusCode || 500,
+      message: error.message,
+      details: error.details || null,
+    });
     return sendJson(res, error.statusCode || 500, { error: error.message || "OpenRouter request failed." });
   }
 }
@@ -193,6 +199,11 @@ async function handleOracle(req, res) {
     );
     return sendJson(res, 200, { data });
   } catch (error) {
+    console.error("[api/oracle] Request failed:", {
+      statusCode: error.statusCode || 500,
+      message: error.message,
+      details: error.details || null,
+    });
     return sendJson(res, error.statusCode || 500, { error: error.message || "OpenRouter request failed." });
   }
 }
@@ -245,8 +256,14 @@ function sendJson(res, statusCode, payload) {
 
 async function askOpenRouterJSON(prompt, schema, maxOutputTokens, schemaName) {
   let lastError = null;
+  const schemaInstructions = buildSchemaInstructions(prompt, schema, schemaName);
+  const backoffMs = [0, 2500, 6000];
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (backoffMs[attempt] > 0) {
+      await sleep(backoffMs[attempt]);
+    }
+
     const response = await fetch(OPENROUTER_URL, {
       method: "POST",
       headers: {
@@ -259,22 +276,17 @@ async function askOpenRouterJSON(prompt, schema, maxOutputTokens, schemaName) {
           {
             role: "system",
             content:
-              "You are a precise editorial astrology writer. Return valid JSON only. Do not use markdown fences or explanatory text.",
+              "You are a precise editorial astrology writer. Return valid JSON only. Do not use markdown fences or explanatory text. The response must be a single JSON object.",
           },
           {
             role: "user",
             content: attempt === 0
-              ? prompt
-              : `${prompt}\n\nReturn only a raw JSON object. Do not use markdown fences. Do not add any explanatory text before or after the JSON.`,
+              ? schemaInstructions
+              : `${schemaInstructions}\n\nReturn only a raw JSON object. Do not use markdown fences. Do not add any explanatory text before or after the JSON.`,
           },
         ],
         response_format: {
-          type: "json_schema",
-          json_schema: {
-            name: schemaName,
-            strict: true,
-            schema,
-          },
+          type: "json_object",
         },
         temperature: 0.25,
         top_p: 0.8,
@@ -286,6 +298,11 @@ async function askOpenRouterJSON(prompt, schema, maxOutputTokens, schemaName) {
       const errorText = await response.text();
       const error = new Error(formatOpenRouterApiError(errorText, response.status));
       error.statusCode = response.status;
+      error.details = summarizeProviderError(errorText);
+      if (response.status === 429) {
+        lastError = error;
+        continue;
+      }
       throw error;
     }
 
@@ -299,7 +316,31 @@ async function askOpenRouterJSON(prompt, schema, maxOutputTokens, schemaName) {
     }
   }
 
-  throw new Error(`OpenRouter returned invalid JSON for a structured section. ${lastError ? `Last parse error: ${lastError.message}` : ""}`.trim());
+  if (lastError?.statusCode === 429) {
+    throw lastError;
+  }
+
+  throw new Error(`OpenRouter returned invalid JSON for a structured response. ${lastError ? `Last parse error: ${lastError.message}` : ""}`.trim());
+}
+
+function buildSchemaInstructions(prompt, schema, schemaName) {
+  return `${prompt}
+
+Structured output requirements:
+- Return exactly one JSON object.
+- Do not wrap the response in markdown fences.
+- Do not include commentary before or after the JSON.
+- Follow this schema exactly for "${schemaName}":
+${JSON.stringify(schema, null, 2)}`;
+}
+
+function summarizeProviderError(errorText) {
+  const normalized = (errorText || "").replace(/\s+/g, " ").trim();
+  return normalized.length > 800 ? `${normalized.slice(0, 800)}...` : normalized;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function parseModelJson(text) {

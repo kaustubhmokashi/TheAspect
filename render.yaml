@@ -7,4 +7,4 @@ services:
     startCommand: node server.js
     envVars:
       - key: OPENROUTER_MODEL
-        value: stepfun/step-3.5-flash:free
+        value: google/gemma-3-27b-it:free

@@ -1151,16 +1151,20 @@ textarea {
 }
 
 .pdf-export {
-  position: fixed;
-  left: 0;
+  position: absolute;
+  left: -10000px;
   top: 0;
   z-index: -1;
-  width: 900px;
+  width: 820px;
   padding: 0;
-  opacity: 0;
+  opacity: 1;
   pointer-events: none;
   background: #fffef9;
   color: var(--color-primary);
+}
+
+.pdf-doc {
+  background: #fffef9;
 }
 
 .pdf-cover {
@@ -1196,46 +1200,104 @@ textarea {
   color: var(--color-ink-soft);
 }
 
-.pdf-export .content {
-  min-width: 0;
-  padding-bottom: 0;
-}
-
-.pdf-export .section {
-  padding: 2.2rem 3.2rem 2.6rem;
+.pdf-section {
+  padding: 2.5rem 3.2rem 2.8rem;
+  border-bottom: 1px solid var(--color-line);
   page-break-inside: avoid;
   break-inside: avoid;
 }
 
-.pdf-export .section--genesis .hero-block,
-.pdf-export .section--genesis .panel__header,
-.pdf-export .section--genesis #profile-form {
-  display: none;
+.pdf-section__eyebrow,
+.pdf-block__eyebrow,
+.pdf-meta-item__label {
+  margin: 0 0 0.55rem;
+  font-family: var(--font-ui);
+  font-size: 0.62rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-muted);
 }
 
-.pdf-export .section--genesis .genesis-grid {
+.pdf-section__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2.1rem;
+  line-height: 0.98;
+  letter-spacing: -0.04em;
+}
+
+.pdf-section__lede {
+  margin: 1rem 0 0;
+  font-size: 1.08rem;
+  line-height: 1.6;
+  color: var(--color-ink-soft);
+}
+
+.pdf-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.25rem;
+  margin-top: 1.5rem;
+  padding: 1.15rem 0 1.35rem;
+  border-top: 1px solid var(--color-line);
+  border-bottom: 1px solid var(--color-line);
+}
+
+.pdf-meta-item__value {
   display: block;
+  font-family: var(--font-body);
+  font-size: 1.02rem;
+  font-weight: 500;
 }
 
-.pdf-export .section--genesis .panel--form {
-  border: 0;
-  padding: 0;
-  background: transparent;
+.pdf-copy {
+  margin-top: 1.5rem;
 }
 
-.pdf-export .section--genesis .panel--form::before {
-  display: none;
+.pdf-copy p,
+.pdf-block__body,
+.pdf-bullets {
+  margin: 0.9rem 0 0;
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--color-primary);
 }
 
-.pdf-export .issue-summary {
-  margin-top: 0;
-  padding-top: 0;
+.pdf-stack {
+  display: grid;
+  gap: 1.2rem;
+  margin-top: 1.4rem;
+}
+
+.pdf-block {
+  padding: 1.2rem 0 0;
+  border-top: 1px solid rgba(15, 15, 15, 0.08);
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+
+.pdf-block:first-child {
   border-top: 0;
+  padding-top: 0;
 }
 
-.pdf-export .chart-visual {
-  position: relative;
-  top: 0;
+.pdf-block__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  line-height: 1.1;
+}
+
+.pdf-bullets {
+  padding-left: 1.2rem;
+}
+
+.pdf-bullets li + li {
+  margin-top: 0.45rem;
+}
+
+.pdf-bullets li::marker {
+  color: var(--color-primary);
 }
 
 .reveal {

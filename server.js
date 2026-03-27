@@ -248,7 +248,7 @@ async function askOpenRouterJSON(prompt, schema, maxOutputTokens, schemaName) {
 
   for (const model of OPENROUTER_MODELS) {
     try {
-      return await askOpenRouterJSONWithModel(model, schemaInstructions, maxOutputTokens);
+      return await askOpenRouterJSONWithModel(model, schemaInstructions, maxOutputTokens, schemaName);
     } catch (error) {
       candidateErrors.push({ model, error });
       console.error("[openrouter] Model attempt failed:", {
@@ -273,7 +273,7 @@ async function askOpenRouterJSON(prompt, schema, maxOutputTokens, schemaName) {
   throw exhaustedError;
 }
 
-async function askOpenRouterJSONWithModel(model, schemaInstructions, maxOutputTokens) {
+async function askOpenRouterJSONWithModel(model, schemaInstructions, maxOutputTokens, schemaName) {
   let lastError = null;
   const backoffMs = [0, 3000];
 
@@ -349,17 +349,24 @@ async function askOpenRouterJSONWithModel(model, schemaInstructions, maxOutputTo
     const text = extractOpenRouterText(payload);
 
     try {
-      return parseModelJson(text);
+      const data = parseModelJson(text);
+      validateStructuredPayload(schemaName, data);
+      return data;
     } catch (error) {
+      error.retryable = true;
       lastError = error;
     }
   }
 
-  throw new Error(`OpenRouter returned invalid JSON for a structured response. ${lastError ? `Last parse error: ${lastError.message}` : ""}`.trim());
+  if (lastError) {
+    throw lastError;
+  }
+
+  throw new Error("OpenRouter returned incomplete content for this request.");
 }
 
 function isTransientModelError(error) {
-  return [429, 502, 503, 504].includes(error?.statusCode);
+  return [429, 502, 503, 504].includes(error?.statusCode) || Boolean(error?.retryable);
 }
 
 function buildSchemaInstructions(prompt, schema, schemaName) {
@@ -428,6 +435,47 @@ function parseModelJson(text) {
   }
 
   throw new Error("Unable to parse the model response as JSON.");
+}
+
+function validateStructuredPayload(schemaName, data) {
+  if (schemaName === "editorial_issue") {
+    const isValid =
+      hasText(data?.chart?.lede) &&
+      hasTextArray(data?.chart?.paragraphs, 3) &&
+      hasForecastBlock(data?.forecast?.daily) &&
+      hasForecastBlock(data?.forecast?.weekly) &&
+      hasForecastBlock(data?.forecast?.yearly) &&
+      hasText(data?.life?.lede) &&
+      Array.isArray(data?.life?.cards) &&
+      data.life.cards.length === 3 &&
+      data.life.cards.every(hasLifeCard) &&
+      hasText(data?.oracleWelcome?.question) &&
+      hasText(data?.oracleWelcome?.answer);
+
+    if (!isValid) {
+      throw new Error("The reading came back incomplete, so we are trying another route.");
+    }
+  }
+
+  if (schemaName === "oracle_answer" && !hasText(data?.answer)) {
+    throw new Error("The oracle answer came back empty, so we are trying another route.");
+  }
+}
+
+function hasForecastBlock(block) {
+  return hasText(block?.headline) && hasText(block?.body) && hasTextArray(block?.directives, 3);
+}
+
+function hasLifeCard(card) {
+  return hasText(card?.title) && hasText(card?.eyebrow) && hasText(card?.body) && hasTextArray(card?.list, 3);
+}
+
+function hasTextArray(list, minItems) {
+  return Array.isArray(list) && list.length >= minItems && list.every(hasText);
+}
+
+function hasText(value) {
+  return typeof value === "string" && value.trim().length > 0;
 }
 
 function extractOpenRouterText(payload) {

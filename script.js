@@ -1041,12 +1041,13 @@ async function downloadIssuePdf() {
     return;
   }
 
-  if (!window.html2pdf) {
+  const hasExporter = await ensurePdfExporter();
+  if (!hasExporter) {
     setGenerationFeedback({
       stateName: "error",
       pulse: "Not ready yet",
       stage: "Download unavailable",
-      status: "The PDF export tool couldn't load just now.",
+      status: "We couldn't prepare the PDF export just now.",
       detail: "Please refresh the page and try again.",
       progress: 100,
     });
@@ -1064,7 +1065,7 @@ async function downloadIssuePdf() {
   document.body.appendChild(exportRoot);
 
   try {
-    await window.html2pdf()
+    const worker = window.html2pdf()
       .set({
         margin: [10, 10, 14, 10],
         filename: buildPdfFilename(),
@@ -1083,8 +1084,10 @@ async function downloadIssuePdf() {
           mode: ["css", "legacy"],
         },
       })
-      .from(exportRoot)
-      .save();
+      .from(exportRoot);
+
+    const pdfBlob = await worker.outputPdf("blob");
+    triggerPdfDownload(pdfBlob, buildPdfFilename());
 
     setGenerationFeedback({
       stateName: "success",
@@ -1094,7 +1097,8 @@ async function downloadIssuePdf() {
       detail: "You can keep exploring here or save the file for later.",
       progress: 100,
     });
-  } catch (_error) {
+  } catch (error) {
+    console.error("[pdf] Export failed:", error);
     setGenerationFeedback({
       stateName: "error",
       pulse: "Not quite yet",
@@ -1108,6 +1112,66 @@ async function downloadIssuePdf() {
     elements.printButton.disabled = false;
     elements.printButton.textContent = originalLabel;
   }
+}
+
+async function ensurePdfExporter() {
+  if (window.html2pdf) {
+    return true;
+  }
+
+  const sources = [
+    "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js",
+    "https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js",
+  ];
+
+  for (const source of sources) {
+    const loaded = await loadExternalScript(source);
+    if (loaded && window.html2pdf) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function loadExternalScript(src) {
+  return new Promise((resolve) => {
+    const existing = document.querySelector(`script[data-external-src="${src}"]`);
+    if (existing) {
+      if (existing.dataset.loaded === "true") {
+        resolve(true);
+        return;
+      }
+
+      existing.addEventListener("load", () => resolve(true), { once: true });
+      existing.addEventListener("error", () => resolve(false), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.crossOrigin = "anonymous";
+    script.referrerPolicy = "no-referrer";
+    script.dataset.externalSrc = src;
+    script.addEventListener("load", () => {
+      script.dataset.loaded = "true";
+      resolve(true);
+    }, { once: true });
+    script.addEventListener("error", () => resolve(false), { once: true });
+    document.head.appendChild(script);
+  });
+}
+
+function triggerPdfDownload(blob, filename) {
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
 }
 
 function buildPdfCover() {

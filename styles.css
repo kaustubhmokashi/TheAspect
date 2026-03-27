@@ -1140,10 +1140,13 @@ textarea {
 
 .pdf-export {
   position: fixed;
-  left: -200vw;
+  left: 0;
   top: 0;
+  z-index: -1;
   width: 900px;
   padding: 0;
+  opacity: 0;
+  pointer-events: none;
   background: #fffef9;
   color: var(--color-primary);
 }

@@ -1259,18 +1259,28 @@ async function downloadIssuePdf() {
 }
 
 async function ensurePdfExporter() {
-  if (window.html2pdf && window.html2canvas && window.jspdf?.jsPDF) {
+  if (window.html2canvas && window.jspdf?.jsPDF) {
     return true;
   }
 
-  const sources = [
-    "https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js",
-    "https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js",
+  const sourceGroups = [
+    [
+      "https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js",
+      "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
+    ],
+    [
+      "https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js",
+      "https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js",
+    ],
+    [
+      "https://unpkg.com/html2canvas@1.4.1/dist/html2canvas.min.js",
+      "https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js",
+    ],
   ];
 
-  for (const source of sources) {
-    const loaded = await loadExternalScript(source);
-    if (loaded && window.html2pdf && window.html2canvas && window.jspdf?.jsPDF) {
+  for (const group of sourceGroups) {
+    const results = await Promise.all(group.map((source) => loadExternalScript(source)));
+    if (results.every(Boolean) && window.html2canvas && window.jspdf?.jsPDF) {
       return true;
     }
   }

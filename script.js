@@ -558,6 +558,9 @@ function syncOracleCooldown() {
 }
 
 function setupEvents() {
+  elements.inputBirthdate.addEventListener("keydown", handleBirthdateKeydown);
+  elements.inputBirthdate.addEventListener("input", handleBirthdateInput);
+
   elements.profileForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
@@ -1586,6 +1589,111 @@ function isBirthdateValid(value) {
 
 function isBirthtimeValid(value) {
   return Boolean(parseBirthtimeInput(value));
+}
+
+function handleBirthdateKeydown(event) {
+  const input = event.currentTarget;
+  const { key } = event;
+
+  if (key === "/") {
+    event.preventDefault();
+    moveBirthdateCaretToNextDigit(input);
+    return;
+  }
+
+  if (key === "Backspace" && input.selectionStart === input.selectionEnd) {
+    const cursor = input.selectionStart || 0;
+    if (cursor > 0 && input.value[cursor - 1] === "/") {
+      event.preventDefault();
+      const updatedDigits = getBirthdateDigits(input.value).slice(0, Math.max(0, countDigitsBeforeCaret(input.value, cursor) - 1)) +
+        getBirthdateDigits(input.value).slice(countDigitsBeforeCaret(input.value, cursor));
+      applyBirthdateMask(input, updatedDigits, Math.max(0, countDigitsBeforeCaret(input.value, cursor) - 1));
+    }
+    return;
+  }
+
+  if (key === "Delete" && input.selectionStart === input.selectionEnd) {
+    const cursor = input.selectionStart || 0;
+    if (input.value[cursor] === "/") {
+      event.preventDefault();
+      const digitIndex = countDigitsBeforeCaret(input.value, cursor);
+      const digits = getBirthdateDigits(input.value);
+      const updatedDigits = digits.slice(0, digitIndex) + digits.slice(digitIndex + 1);
+      applyBirthdateMask(input, updatedDigits, digitIndex);
+    }
+    return;
+  }
+
+  if (
+    key.length === 1 &&
+    !/\d/.test(key) &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !event.altKey
+  ) {
+    event.preventDefault();
+  }
+}
+
+function handleBirthdateInput(event) {
+  const input = event.currentTarget;
+  const digitIndex = countDigitsBeforeCaret(input.value, input.selectionStart || 0);
+  applyBirthdateMask(input, getBirthdateDigits(input.value), digitIndex);
+}
+
+function applyBirthdateMask(input, digits, digitIndex) {
+  const masked = formatBirthdateDraft(digits);
+  input.value = masked;
+  const nextCaret = getBirthdateCaretFromDigitIndex(masked, digitIndex);
+  window.requestAnimationFrame(() => {
+    input.setSelectionRange(nextCaret, nextCaret);
+  });
+}
+
+function formatBirthdateDraft(value) {
+  const digits = getBirthdateDigits(value).slice(0, 8);
+  if (digits.length <= 2) {
+    return digits;
+  }
+
+  if (digits.length <= 4) {
+    return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  }
+
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
+function getBirthdateDigits(value) {
+  return (value || "").replace(/\D/g, "");
+}
+
+function countDigitsBeforeCaret(value, caretPosition) {
+  return getBirthdateDigits((value || "").slice(0, caretPosition)).length;
+}
+
+function getBirthdateCaretFromDigitIndex(maskedValue, digitIndex) {
+  if (digitIndex <= 0) {
+    return 0;
+  }
+
+  let seenDigits = 0;
+  for (let index = 0; index < maskedValue.length; index += 1) {
+    if (/\d/.test(maskedValue[index])) {
+      seenDigits += 1;
+      if (seenDigits === digitIndex) {
+        return index + 1;
+      }
+    }
+  }
+
+  return maskedValue.length;
+}
+
+function moveBirthdateCaretToNextDigit(input) {
+  const cursor = input.selectionStart || 0;
+  const nextSlash = input.value.indexOf("/", cursor);
+  const nextCaret = nextSlash >= 0 ? nextSlash + 1 : cursor;
+  input.setSelectionRange(nextCaret, nextCaret);
 }
 
 function isPlaceholderSeed(value) {
